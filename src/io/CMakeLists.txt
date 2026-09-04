@@ -1,0 +1,40 @@
+add_subdirectory(filesystem)
+
+wl_library(io_stream
+  SRCS
+    machdep.h
+    streamread.cc
+    streamread.h
+    streamwrite.cc
+    streamwrite.h
+  USES_SDL2
+  DEPENDS
+    base_exceptions
+    base_macros
+)
+
+wl_library(io_fileread
+  SRCS
+    fileread.cc
+    fileread.h
+    filewrite.cc
+    filewrite.h
+  DEPENDS
+    io_filesystem
+    io_stream
+)
+
+wl_library(io_profile
+  SRCS
+    profile.h
+    profile.cc
+  USES_ATOMIC
+  DEPENDS
+    base
+    base_exceptions
+    base_geometry
+    base_macros
+    build_info
+    io_fileread
+    io_filesystem
+ )

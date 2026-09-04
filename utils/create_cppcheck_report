@@ -1,0 +1,18 @@
+#!/bin/sh
+FILE=cppcheck_report.html
+echo "<!doctype html>"                                                                 >  $FILE
+echo "<html>"                                                                          >> $FILE
+echo "<head><title>cppcheck error report for Widelands C++ source code</title></head>" >> $FILE
+echo "<body>"                                                                          >> $FILE
+echo "<h2>Issues found by "                                                            >> $FILE
+cppcheck --version                                                                     >> $FILE
+echo " in Version "                                                                    >> $FILE
+utils/detect_revision.py                                                               >> $FILE
+echo "</h2>"                                                                           >> $FILE
+echo "<div><pre>"                                                                      >> $FILE
+cppcheck --force --quiet --verbose --template='cppcheck1' --enable=all -I src src 2>&1 \
+| grep -v "was not checked because its code equals another one" \
+| sed "s@^\[\(.*\):\([[:digit:]]\+\)\]: \(.*\)\$@</pre><a href=\"https://github.com/widelands/widelands/blob/master/\1\?#L\2\">\1:\2</a>: \3<pre>@"                                  >> $FILE
+echo "</pre></div>"                                                                    >> $FILE
+echo "</body>"                                                                         >> $FILE
+echo "</html>"                                                                         >> $FILE

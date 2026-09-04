@@ -1,0 +1,2 @@
+<rt><div width=130><p><font color=ff0000>Hello <font shadow=yes>some shadow</font> World</font></p></div></rt>
+

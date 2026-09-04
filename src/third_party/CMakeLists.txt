@@ -1,0 +1,130 @@
+if (NOT MINIZIP_STATIC_LIBRARIES)
+  wl_library(third_party_minizip
+    THIRD_PARTY
+    SRCS
+      minizip/ioapi.h
+      minizip/unzip.cc
+      minizip/unzip.h
+      minizip/zip.h
+    USES_ZLIB
+  )
+  message(STATUS "Using embedded minizip libraries")
+endif()
+
+wl_library(third_party_eris
+  THIRD_PARTY
+  C_LIBRARY
+  SRCS
+    eris/eris.c
+    eris/eris.h
+    eris/lapi.c
+    eris/lapi.h
+    eris/lauxlib.c
+    eris/lauxlib.h
+    eris/lbaselib.c
+    eris/lbitlib.c
+    eris/lcode.c
+    eris/lcode.h
+    eris/lcorolib.c
+    eris/lctype.c
+    eris/lctype.h
+    eris/ldblib.c
+    eris/ldebug.c
+    eris/ldebug.h
+    eris/ldo.c
+    eris/ldo.h
+    eris/ldump.c
+    eris/lfunc.c
+    eris/lfunc.h
+    eris/lgc.c
+    eris/lgc.h
+    eris/linit.c
+    eris/liolib.c
+    eris/llex.c
+    eris/llex.h
+    eris/llimits.h
+    eris/lmathlib.c
+    eris/lmem.c
+    eris/lmem.h
+    eris/loadlib.c
+    eris/lobject.c
+    eris/lobject.h
+    eris/lopcodes.c
+    eris/lopcodes.h
+    eris/loslib.c
+    eris/lparser.c
+    eris/lparser.h
+    eris/lprefix.h
+    eris/lstate.c
+    eris/lstate.h
+    eris/lstring.c
+    eris/lstring.h
+    eris/lstrlib.c
+    eris/ltable.c
+    eris/ltable.h
+    eris/ltablib.c
+    eris/ltm.c
+    eris/ltm.h
+    eris/lua.h
+    eris/lua.hpp
+    eris/luaconf.h
+    eris/lualib.h
+    eris/lundump.c
+    eris/lundump.h
+    eris/lutf8lib.c
+    eris/lvm.c
+    eris/lvm.h
+    eris/lzio.c
+    eris/lzio.h
+)
+
+wl_library(third_party_libmd
+  THIRD_PARTY_WITH_INCLUDES
+  SRCS
+    libmd/include/md5.h
+    libmd/include/sha1.h
+    libmd/include/sha256.h
+    libmd/include/sha2.h
+    libmd/include/sha512.h
+    libmd/include/sha.h
+    libmd/src/helper_md5.cc
+    libmd/src/helper_sha1.cc
+    libmd/src/helper_sha224.cc
+    libmd/src/helper_sha256.cc
+    libmd/src/helper_sha384.cc
+    libmd/src/helper_sha512_256.cc
+    libmd/src/helper_sha512.cc
+    libmd/src/md5.cc
+    libmd/src/sha1.cc
+    libmd/src/sha2.cc
+)
+
+add_definitions(-DTINYGETTEXT_WITH_SDL)
+wl_library(tinygettext
+  THIRD_PARTY
+  SRCS
+    tinygettext/src/dictionary.cpp
+    tinygettext/src/dictionary_manager.cpp
+    tinygettext/src/iconv.cpp
+    tinygettext/src/language.cpp
+    tinygettext/src/log.cpp
+    tinygettext/src/plural_forms.cpp
+    tinygettext/src/po_parser.cpp
+    tinygettext/src/tinygettext.cpp
+    tinygettext/src/unix_file_system.cpp
+    tinygettext/include/tinygettext/dictionary.hpp
+    tinygettext/include/tinygettext/dictionary_manager.hpp
+    tinygettext/include/tinygettext/dirent.h
+    tinygettext/include/tinygettext/file_system.hpp
+    tinygettext/include/tinygettext/iconv.hpp
+    tinygettext/include/tinygettext/language.hpp
+    tinygettext/include/tinygettext/log.hpp
+    tinygettext/include/tinygettext/log_stream.hpp
+    tinygettext/include/tinygettext/plural_forms.hpp
+    tinygettext/include/tinygettext/po_parser.hpp
+    tinygettext/include/tinygettext/tinygettext.hpp
+    tinygettext/include/tinygettext/unix_file_system.hpp
+  USES_SDL2
+  USES_STD_FS
+)
+wl_include_directories(tinygettext ${CMAKE_CURRENT_SOURCE_DIR}/tinygettext/include)

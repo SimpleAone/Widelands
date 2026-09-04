@@ -1,0 +1,228 @@
+name: Build
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+on:
+  pull_request:
+    types: [ opened, reopened, synchronize ]
+  push:
+    branches: [ master, protected/* ]
+
+jobs:
+  changes:
+    name: changed files
+    runs-on: ubuntu-latest
+    # Set job outputs to values from changed_files step for other jobs
+    outputs:
+      codecheck: ${{ steps.changed_files.outputs.codecheck }}
+      clang_tidy: ${{ steps.changed_files.outputs.clang_tidy }}
+      run_test_suite: ${{ steps.changed_files.outputs.test_suite }}
+      inst_windows_msvc: ${{ steps.changed_files.outputs.inst_windows_msvc }}
+      inst_windows_arm: ${{ steps.changed_files.outputs.inst_windows_arm }}
+      inst_windows: ${{ steps.changed_files.outputs.inst_windows }}
+      inst_macos: ${{ steps.changed_files.outputs.inst_macos }}
+      appimage: ${{ steps.changed_files.outputs.appimage }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+      if: github.ref == 'refs/heads/master'
+      with:
+        fetch-depth: 1
+    - name: Check for changed files
+      uses: dorny/paths-filter@v4
+      id: changed_files
+      with:
+        # groups to check for changed files (as string, yaml anchors are resolved by the tool)
+        #   pattern: https://github.com/micromatch/picomatch?tab=readme-ov-file#globbing-features
+        filters: |
+          _anchors: # to define yaml anchors in one place
+            - &src_cmake_dependencies
+              - 'CMakeLists.txt'
+              - 'cmake/**'
+              - 'src/**'
+                # dependencies:
+              - 'install-dependencies.sh' # called by xx.yaml or ./.github/scripts/install_deps.sh
+              # not 'utils/download_asio.sh', called by install-dependencies.sh for some other arch
+            - &installer
+              - *src_cmake_dependencies
+              - 'data/**'
+            - &ubuntu_dependencies
+              - *src_cmake_dependencies
+              - 'utils/ubuntu/packages'
+          codecheck:
+            - *ubuntu_dependencies
+            - '.github/scripts/install_deps.sh' # calls install-dependencies.sh
+            - '.github/workflows/build_codecheck.yaml'
+          clang_tidy:
+            - *ubuntu_dependencies
+            - 'utils/check_clang_tidy_results.py'
+            - 'utils/run-clang-tidy.py'
+            - '.github/scripts/install_deps.sh' # calls install-dependencies.sh
+            - '.github/workflows/build_clang_tidy.yaml'
+            - '.clang-tidy'
+          test_suite:
+            - *ubuntu_dependencies
+            # data/ except of some subdirectories
+            - 'data/!(campaigns|i18n|maps|music|sound)/**'
+            # but track parts of them
+            - 'data/i18n/!(translations|translation_stats.conf)/**'  # exclude translations ...
+              # ... and files created by them, because they are updated frequently
+            - 'data/maps/Crater.wmf/**' # for test/template/test_alldefaults.wgt
+            - 'data/maps/Lesser_Ring.wmf/**' # for test/template/*.wgt
+            - 'data/maps/Wisent_Valley.wmf/**' # for test/template/test_fortified_vi*-artifacts.wgt
+            # changes of other files
+            - 'regression_test.py'
+            - 'test/**'
+            - '.github/scripts/install_deps.sh' # calls install-dependencies.sh
+            - '.github/workflows/build_testsuite.yaml'
+          # TODO(tothxa): utils/windows/** has some files that are only relevant to one of
+          #               msvc or mingw, they shouldn't trigger rebuilding the other
+          inst_windows_msvc:
+            - *installer
+            # doc/** maybe for some installers TODO(unknown)
+            - 'utils/windows/**' # utils\windows\innosetup\Widelands.iss used by build_windows_msvc.yaml
+            - '.github/workflows/build_windows_msvc.yaml' # calls install-dependencies.sh
+          inst_windows_arm:
+            - *installer
+            # doc/** maybe for some installers TODO(unknown)
+            - 'utils/windows/**' # utils\windows\innosetup\Widelands.iss used by build_windows_msvc.yaml
+            - '.github/workflows/build_windows_arm.yaml' # calls install-dependencies.sh
+          inst_windows:
+            - *installer
+            - 'utils/windows/**' # utils\windows\innosetup\Widelands.iss used by build_windows.yaml
+            - '.github/workflows/build_windows.yaml' # calls install-dependencies.sh
+          inst_macos:
+            - *installer
+            - 'compile.sh' # called by utils/macos/build_app.sh, calls install-dependencies.sh
+            - 'utils/macos/*'
+            - '.github/workflows/build_macos.yaml' # calls install-dependencies.sh
+          appimage:
+            - *installer
+            - 'utils/ubuntu/packages'
+            - 'xdg/org.widelands.Widelands.*'
+            - '.github/scripts/install_deps.sh' # calls install-dependencies.sh
+            - '.github/workflows/build_appimage.yaml'
+
+  pre-build_checks:
+    needs: [changes]
+    uses: ./.github/workflows/pre-build_checks.yaml
+    with:
+      clang_tidy: ${{ needs.changes.outputs.clang_tidy }}
+      codecheck: ${{ needs.changes.outputs.codecheck }}
+
+  testsuite:
+    needs: [changes, pre-build_checks]
+    if: needs.changes.outputs.run_test_suite == 'true'
+    uses: ./.github/workflows/build_testsuite.yaml
+
+  windows-msvc:
+    needs: [changes, pre-build_checks]
+    if: needs.changes.outputs.inst_windows_msvc == 'true'
+    uses: ./.github/workflows/build_windows_msvc.yaml
+
+  windows-arm:
+    needs: [changes, pre-build_checks]
+    if: needs.changes.outputs.inst_windows_arm == 'true'
+    uses: ./.github/workflows/build_windows_arm.yaml
+
+  windows:
+    needs: [changes, pre-build_checks]
+    if: needs.changes.outputs.inst_windows == 'true'
+    uses: ./.github/workflows/build_windows.yaml
+
+  macos:
+    needs: [changes, pre-build_checks]
+    if: needs.changes.outputs.inst_macos == 'true'
+    uses: ./.github/workflows/build_macos.yaml
+
+  appimage:
+    if: >
+      github.repository == 'widelands/widelands' && github.ref == 'refs/heads/master' &&
+      needs.changes.outputs.appimage == 'true'
+    needs: [changes, pre-build_checks]
+    uses: ./.github/workflows/build_appimage.yaml
+
+  dev_release:
+    name: Automated development pre-release
+    if: ${{ github.repository == 'widelands/widelands' && github.ref == 'refs/heads/master' && always() }}
+    needs: [windows, windows-msvc, windows-arm, macos, appimage]
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 15
+          token: '${{ secrets.WIDELANDS_FORMAT_TOKEN }}'
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+      - name: Check missing artifacts
+        # This step ensures that the development release always contains an artifact for every platform.
+        # artifacts.list lists all attachments of the pre-release. In case a build step failed, we detect
+        # that a file is missing and download the last successful build from the pre-release.
+        run: |
+          RELEASE_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/latest"
+          mkdir Widelands-latest
+          cd Widelands-latest
+          curl -L -O "$RELEASE_URL/artifacts.list"
+          for ARTIFACT in $(cat artifacts.list)
+          do
+            [ "${ARTIFACT%%-*}" != "Widelands" ] && continue
+            MATRIX=$(echo $ARTIFACT | sed 's/Widelands-[0-9a-f]*-//' -)
+            if ! ls ../Widelands*/Widelands*${MATRIX} ; then
+              echo "::warning::Falling back to old artifact $ARTIFACT"
+              curl -L -o $ARTIFACT "$RELEASE_URL/Widelands-daily-${MATRIX}"
+            fi
+          done
+      - name: List and rename artifacts
+        run: |
+          sudo apt-get update
+          sudo apt-get install rename
+          find . -name 'Widelands-*' -type f -print0 | while IFS= read -d '' -r ARTIFACT; do
+            FILENAME=$(basename "$ARTIFACT")
+            # Move all artifacts to the current folder
+            mv "$ARTIFACT" "$FILENAME"
+            # Store original file names
+            echo $FILENAME | tee -a artifacts.list
+            # Rename artifacts to have a fixed url
+            prename 's/Widelands-[0-9a-f]*-/Widelands-daily-/' "$FILENAME" \;
+          done
+          # Calculate checksums
+          find . -name 'Widelands-daily-*' -type f -print0 | while IFS= read -d '' -r ARTIFACT; do
+            echo "Calculate checksum for \"$ARTIFACT\""
+            md5sum "${ARTIFACT}" > "${ARTIFACT}.md5"
+          done
+          # curl exits 23 because grep will kill it after the first match
+          set +e
+          latest=$(curl -i "https://api.github.com/repos/${GITHUB_REPOSITORY}/commits/master" | grep -m 1 "\"sha\": ")
+          set -e
+          latest=${latest#*: \"}
+          latest=${latest%\",}
+          if [ "$latest" != "$GITHUB_SHA" ]
+          then
+            echo "The master branch ($GITHUB_REF) was updated from '$GITHUB_SHA' to '$latest', cancel"
+            exit 1
+          fi
+      - name: Updating latest pre-release
+        # Creates a new pre-release with the "latest" tag and all gathered artifacts.
+        # Because all older artifacts are removed, we have to reupload the missing ones detected in the previous step
+        env:
+          GH_TOKEN: "${{ secrets.WIDELANDS_FORMAT_TOKEN }}"
+        run: |
+          gh release delete latest --yes    || echo "No old release to delete"
+          git push --delete origin latest   || echo "No latest tag to delete"
+          git tag --force latest HEAD
+          git push --tags origin
+
+          echo "These builds are automatically generated from master. " >> release_notes
+          echo "## Latest changes" >> release_notes
+          # Print changelog from last 10 commits, strip Co-authored/Co-committed tags
+          git log --pretty="- %h: %s (%ai) (%an)" --no-decorate HEAD~10..HEAD | sed 's/Co-.*> //' >> release_notes
+          echo "<details><summary>Original filenames</summary><pre>" >> release_notes
+          cat artifacts.list >> release_notes
+          echo "</pre></details>" >> release_notes
+
+          gh release create latest         \
+            --prerelease                   \
+            --notes-file release_notes     \
+            --title "Development Builds"   \
+            Widelands-daily-* artifacts.list

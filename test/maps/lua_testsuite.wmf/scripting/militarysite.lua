@@ -1,0 +1,105 @@
+-- =======================================================================
+--                          MilitarySite Testings
+-- =======================================================================
+
+-- ================
+-- Soldier creation
+-- ================
+function _cnt(a)
+   local rv = 0
+   for sd, c in pairs(a) do rv = rv + c end
+   return rv
+end
+
+militarysite_tests = lunit.TestCase("MilitarySite Tests")
+local offset_y = 0
+function militarysite_tests:setup()
+   self.f1 = map:get_field(56, 5 + offset_y) -- move down, to have remaining bobs on a separate field
+   offset_y = offset_y + 1
+
+   self.fortress = player1:place_building("barbarians_fortress", self.f1)
+end
+function militarysite_tests:teardown()
+   pcall(function()
+      self.f1.brn.immovable:remove()
+   end)
+end
+function militarysite_tests:test_name()
+   assert_equal("barbarians_fortress", self.fortress.descr.name)
+end
+function militarysite_tests:test_type()
+   assert_equal("militarysite", self.fortress.descr.type_name)
+end
+function militarysite_tests:test_no_soldiers_initially()
+   assert_equal(0, _cnt(self.fortress:get_soldiers("all")))
+end
+function militarysite_tests:test_max_soldiers()
+   assert_equal(8, self.fortress.max_soldiers);
+end
+function militarysite_tests:test_set_soldiers_single_arg()
+   self.fortress:set_soldiers({0,0,0,0}, 2)
+   assert_equal(2, self.fortress:get_soldiers({0,0,0,0}))
+   -- check call with two args: replaces all other soldiers
+   self.fortress:set_soldiers({0,1,0,0}, 1)
+   assert_equal(0, self.fortress:get_soldiers({0,0,0,0}))
+   assert_equal(1, self.fortress:get_soldiers({0,1,0,0}))
+end
+function militarysite_tests:test_set_soldiers_multi_arg()
+   self.fortress:set_soldiers{
+      [{0,0,0,0}] = 2,
+      [{1,1,0,1}] = 3
+   }
+   assert_equal(5, _cnt(self.fortress:get_soldiers("all")))
+   assert_equal(2, self.fortress:get_soldiers({0,0,0,0}))
+   assert_equal(3, self.fortress:get_soldiers({1,1,0,1}))
+end
+function militarysite_tests:test_set_soldiers_add_and_remove()
+   self.fortress:set_soldiers{[{0,0,0,0}] = 3}
+   assert_equal(3, _cnt(self.fortress:get_soldiers("all")))
+   assert_equal(3, self.fortress:get_soldiers({0,0,0,0}))
+   -- check call with table: replaces all other soldiers
+   self.fortress:set_soldiers{[{3,0,0,1}] = 1, [{0,0,0,0}] = 1}
+   assert_equal(2, _cnt(self.fortress:get_soldiers("all")))
+   assert_equal(1, self.fortress:get_soldiers({0,0,0,0}))
+   assert_equal(1, self.fortress:get_soldiers({3,0,0,1}))
+   self.fortress:set_soldiers({3,2,0,1}, 1)
+   assert_equal(1, _cnt(self.fortress:get_soldiers("all")))
+   assert_equal(0, self.fortress:get_soldiers({0,0,0,0}))
+   assert_equal(0, self.fortress:get_soldiers({3,0,0,1}))
+   assert_equal(1, self.fortress:get_soldiers({3,2,0,1}))
+   -- correct type of bob.descr (inclusive attribute)
+   local soldier_bobs = self.fortress.fields[1].bobs
+   assert_equal(1, #soldier_bobs)
+   assert_equal("barbarians_soldier", soldier_bobs[1].descr.name)
+   assert_equal(3, soldier_bobs[1].health_level)
+   assert_equal("soldier", soldier_bobs[1].descr.type_name)
+   assert_true(soldier_bobs[1].descr.max_health_level > 0)
+end
+
+function militarysite_tests:test_set_soldiers_all_at_once()
+   self.fortress:set_soldiers{[{0,0,0,0}] = self.fortress.max_soldiers}
+   assert_equal(self.fortress.max_soldiers,
+      _cnt(self.fortress:get_soldiers("all")))
+   assert_equal(self.fortress.max_soldiers,
+      self.fortress:get_soldiers({0,0,0,0}))
+   -- repeated key is not allowed, because the order is not deterministic
+   assert_error("Repeated key is not allowed", function()
+      self.fortress:set_soldiers({[{0,0,0,0}] = 1, [{0,0,0,0}] = 2, [{0,1,0,0}] = 3})
+   end)
+end
+function militarysite_tests:test_illegal_soldier()
+   assert_error("illegal level", function()
+      self.fortress:set_soldiers{[{10,0,0,0}] = 1}
+   end)
+end
+function militarysite_tests:test_no_space()
+   self.fortress:set_soldiers{[{0,0,0,0}] = 2}
+   assert_error("no_space", function()
+      self.fortress:set_soldiers{[{0,0,0,0}] = 9}
+   end)
+   assert_equal(2, _cnt(self.fortress:get_soldiers("all")))
+end
+function militarysite_tests:test_foreign_militarysite_new_tribe()
+   local field = map:get_field(13,13)
+   player1:place_building("frisians_fortress", field, false, true)
+end

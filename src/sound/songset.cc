@@ -1,0 +1,244 @@
+/*
+ * Copyright (C) 2006-2026 by the Widelands Development Team
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <https://www.gnu.org/licenses/>.
+ *
+ */
+
+#include "sound/songset.h"
+
+#include <SDL_mixer.h>
+
+#include "base/log.h"
+#include "io/fileread.h"
+#include "io/filesystem/layered_filesystem.h"
+#include "wlapplication_options.h"
+
+/// Prepare infrastructure for reading song files from disk and register the matching files
+Songset::Songset(const std::string& dir, const std::string& basename) {
+	assert(g_fs);
+
+	name_ = basename;
+
+	std::vector<std::string> all_songs;
+	for (const char* suffix : {"mp3", "ogg"}) {
+		std::vector<std::string> files = g_fs->get_sequential_files(dir, name_, suffix);
+		all_songs.insert(all_songs.end(), files.begin(), files.end());
+	}
+
+	load_songs(all_songs);
+
+	if (songs_.empty()) {
+		init_songs(all_songs);
+		load_songs(all_songs);
+	}
+
+	// initialize "neg" index to ensure 1st sequential playback starts at 0
+	// in case you wonder, yes this is needed
+	current_song_ = static_cast<uint32_t>(-1);
+}
+
+/**
+ * Initializes config from a list of music files, enabled by default
+ * \param files filenames that will be added
+ */
+void Songset::init_songs(const std::vector<std::string>& files) {
+	for (const std::string& filename : files) {
+		set_config_bool("songs", filename, true);
+	}
+}
+
+/// Loads song data from config into memory
+void Songset::load_songs(const std::vector<std::string>& files) {
+	std::string path_basename = "music";
+	path_basename += FileSystem::file_separator() + name_;
+	try {
+		Section& sec = get_config_section("songs");
+		for (const std::string& filename : files) {
+			if (filename.rfind(path_basename, 0) != 0) {
+				log_warn("Not loading invalid song file %s", filename.c_str());
+				continue;
+			}
+			const bool enabled = sec.get_bool(filename.c_str(), true);
+			Song song = Song(filename);
+			song.enabled = enabled;
+			song.filename = filename;
+			m_ = load_file(filename);
+#if SDL_MIXER_VERSION_ATLEAST(2, 6, 0)
+			std::string title(Mix_GetMusicTitle(m_));
+#else
+			std::string title(filename);
+#endif
+			song.title = title;
+			songs_.emplace(filename, song);
+		}
+
+	} catch (WException&) {
+		log_warn("Failed to load song data from config");
+	}
+}
+
+/// Close and delete all songs to avoid memory leaks.
+Songset::~Songset() {
+	songs_.clear();
+
+	if (m_ != nullptr) {
+		Mix_FreeMusic(m_);
+	}
+
+	if (rwops_ != nullptr) {
+		SDL_FreeRW(rwops_);
+		fr_.close();
+	}
+}
+
+/**
+ * Lets the playlist know if a song should be played or not
+ */
+bool Songset::is_song_enabled(std::string& filename) {
+	return songs_[filename].enabled;
+}
+
+/**
+ * Toggle whether to play or skip the given song for this songset
+ */
+void Songset::set_song_enabled(std::string& filename, bool on) {
+	songs_[filename].enabled = on;
+	set_config_bool("songs", filename, on);
+}
+
+/**
+ * Return all songs to display in music player
+ */
+std::vector<Song> Songset::get_song_data() {
+	std::vector<Song> list;
+	list.reserve(songs_.size());
+	for (const auto& entry : songs_) {
+		list.emplace_back(entry.second);
+	}
+	return list;
+}
+
+/**
+ * Get the audio data for the next song in the songset, or a random song
+ * \param random an optional random number for picking the song
+ * \return  a pointer to the chosen song; nullptr if none was found
+ *          or an error occurred
+ */
+Mix_Music* Songset::get_song(uint32_t random) {
+
+	std::map<std::string, Song> playlist = create_playlist();
+
+	if (playlist.empty()) {
+		return nullptr;
+	}
+
+	const uint32_t playlist_size = static_cast<uint32_t>(playlist.size());
+
+	// A. Shuffled playback
+	if (random != 0 && playlist_size > 1) {
+		// Calculate the next song index randomly, preventing immediate repetition
+		uint32_t offset = 1 + random % (playlist_size - 1);
+		current_song_ = (current_song_ + offset) % playlist_size;
+	}
+	// B. Sequential playback
+	else {
+		// Increment normally
+		current_song_ = (current_song_ + 1) % playlist_size;
+	}
+
+	// Safety check for wrap-around just in case
+	if (current_song_ >= playlist_size) {
+		current_song_ = 0;
+	}
+
+	auto it = playlist.begin();
+	std::advance(it, current_song_);
+	std::string filename = it->first;
+
+	m_ = load_file(filename);
+
+	return m_;
+}
+
+std::string Songset::get_title() {
+	std::map<std::string, Song> playlist = create_playlist();
+	std::map<std::string, Song>::iterator it = playlist.begin();
+	std::advance(it, current_song_);
+
+	Song song = it->second;
+
+	std::string title = song.title;
+	if (title.empty()) {
+		title = song.filename;
+	}
+	return title;
+}
+
+// Create a map that contains only the user-selected songs
+std::map<std::string, Song> Songset::create_playlist() {
+	std::map<std::string, Song> p;
+
+	for (const auto& entry : songs_) {
+		Song s = entry.second;
+		if (s.enabled) {
+			p.emplace(s.filename, s);
+		}
+	}
+	return p;
+}
+
+/**
+ * Loads a song file from disk
+ * \param filename
+ * \return music data
+ */
+Mix_Music* Songset::load_file(const std::string& filename) {
+
+	// First, close the previous song and remove it from memory
+	if (m_ != nullptr) {
+		Mix_FreeMusic(m_);
+		m_ = nullptr;
+	}
+
+	if (rwops_ != nullptr) {
+		SDL_FreeRW(rwops_);
+		rwops_ = nullptr;
+		fr_.close();
+	}
+
+	// Then open the new song
+	if (fr_.try_open(*g_fs, filename)) {
+		rwops_ = SDL_RWFromMem(fr_.data(0), fr_.get_size());
+		if (rwops_ == nullptr) {
+			fr_.close();  // fr_ should be Open iff rwops_ != 0
+			return nullptr;
+		}
+	} else {
+		return nullptr;
+	}
+
+	if (rwops_ != nullptr) {
+		m_ = Mix_LoadMUS_RW(rwops_, 0);
+	}
+
+	if (m_ != nullptr) {
+		log_info("Songset: Loaded song \"%s\"\n", filename.c_str());
+	} else {
+		log_err("Songset: Loading song \"%s\" failed!\n", filename.c_str());
+		log_err("Songset: %s\n", Mix_GetError());
+	}
+
+	return m_;
+}

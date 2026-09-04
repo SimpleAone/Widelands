@@ -1,0 +1,277 @@
+wl_library(logic_exceptions
+  SRCS
+    game_data_error.cc
+    game_data_error.h
+  DEPENDS
+    base
+    base_exceptions
+)
+
+wl_library(logic_widelands_geometry
+  SRCS
+    widelands_geometry.cc
+    widelands_geometry.h
+)
+
+wl_library(logic_widelands_geometry_io
+  SRCS
+    widelands_geometry_io.cc
+    widelands_geometry_io.h
+  DEPENDS
+    io_fileread
+    io_stream
+    logic_constants
+    logic_widelands_geometry
+)
+
+wl_library(logic_game_settings
+  SRCS
+    game_settings.cc
+    game_settings.h
+    player_end_result.h
+  DEPENDS
+    graphic_color
+    io_filesystem
+    logic_addons
+    logic_constants
+    logic_exceptions
+    logic_filesystem_constants
+    logic_tribe_basic_info
+    notifications
+    scripting_lua_interface
+    scripting_lua_table
+)
+
+wl_library(logic_single_player_game_settings
+  SRCS
+    single_player_game_settings_provider.cc
+    single_player_game_settings_provider.h
+  DEPENDS
+    ai
+    base
+    base_exceptions
+    base_random
+    graphic_playercolor
+    logic_game_settings
+    logic_tribe_basic_info
+)
+
+wl_library(logic_game_controller
+  SRCS
+    game_controller.h
+    replay_game_controller.h
+    replay_game_controller.cc
+    single_player_game_controller.h
+    single_player_game_controller.cc
+  USES_SDL2
+  DEPENDS
+    ai
+    base_times
+    logic
+    commands
+    logic_game_settings
+    widelands_options
+    wui_interactive
+)
+
+wl_library(logic_constants
+  SRCS
+    vision.h
+    widelands.cc
+    widelands.h
+  DEPENDS
+    base_exceptions
+)
+
+wl_library(logic_filesystem_constants
+  SRCS
+    filesystem_constants.h
+    filesystem_constants.cc
+)
+
+wl_library(logic_addons
+  SRCS
+    addons.cc
+    addons.h
+    mutable_addon.cc
+    mutable_addon.h
+  DEPENDS
+    base
+    base_exceptions
+    base_math
+    base_time_string
+    build_info
+    graphic
+    graphic_text_layout
+    io_fileread
+    io_filesystem
+    io_profile
+    logic_filesystem_constants
+    logic_map
+    map_io
+    map_io_map_loader
+    widelands_options
+)
+
+wl_library(logic_objectives
+  SRCS
+    objective.cc
+    objective.h
+  DEPENDS
+    base
+)
+
+
+wl_library(logic_generic_save_handler
+  SRCS
+    generic_save_handler.h
+    generic_save_handler.cc
+  DEPENDS
+    base
+    base_time_string
+    io_filesystem
+    logic_filesystem_constants
+)
+
+wl_library(logic_map
+  SRCS
+    cookie_priority_queue.h
+    field.cc
+    field.h
+    map.cc
+    map.h
+    map_compassdir.cc
+    map_compassdir.h
+    map_revision.cc
+    map_revision.h
+    mapastar.cc
+    mapastar.h
+    mapdifferenceregion.cc
+    mapdifferenceregion.h
+    mapfringeregion.cc
+    mapfringeregion.h
+    maphollowregion.cc
+    maphollowregion.h
+    mapregion.h
+    maptriangleregion.cc
+    maptriangleregion.h
+    nodecaps.h
+    note_map_options.h
+    path.cc
+    path.h
+    pathfield.cc
+    pathfield.h
+  USES_ATOMIC
+  DEPENDS
+    base
+    base_exceptions
+    base_macros
+    base_scoped_timer
+    build_info
+    economy
+    graphic
+    graphic_playercolor
+    io_fileread
+    io_filesystem
+    logic
+    logic_addons
+    logic_constants
+    logic_exceptions
+    logic_filesystem_constants
+    logic_map_objects
+    logic_objectives
+    logic_widelands_geometry
+    logic_widelands_geometry_io
+    map_io_map_loader
+    notifications
+    wui_mapviewpixelfunctions
+)
+
+wl_library(logic_training_wheels
+  SRCS
+    training_wheels.cc
+    training_wheels.h
+  DEPENDS
+    base
+    io_filesystem
+    io_profile
+    logic_filesystem_constants
+    scripting_lua_table
+    scripting_lua_interface
+)
+
+wl_library(logic
+  SRCS
+    ai_dna_handler.cc
+    ai_dna_handler.h
+    detected_port_space.cc
+    detected_port_space.h
+    editor_game_base.cc
+    editor_game_base.h
+    game.cc
+    game.h
+    message.h
+    message_id.h
+    message_queue.h
+    player.cc
+    player.h
+    player_area.h
+    playersmanager.cc
+    playersmanager.h
+    replay.cc
+    replay.h
+    save_handler.cc
+    save_handler.h
+    trade_agreement.h
+  # TODO(sirver): Uses SDL2 only on WIN32 for a dirty hack.
+  USES_SDL2
+  USES_ATOMIC
+  DEPENDS
+    base
+    base_crypto
+    base_exceptions
+    base_macros
+    base_random
+    base_scoped_timer
+    base_time_string
+    base_times
+    build_info
+    economy
+    game_io
+    graphic
+    graphic_color
+    graphic_playercolor
+    io_fileread
+    io_filesystem
+    io_profile
+    io_stream
+    logic_addons
+    commands
+    logic_constants
+    logic_exceptions
+    logic_filesystem_constants
+    logic_game_controller
+    logic_game_settings
+    logic_generic_save_handler
+    logic_map
+    logic_map_objects
+    logic_tribe_basic_info
+    logic_training_wheels
+    logic_widelands_geometry
+    map_io
+    map_io_map_loader
+    note_sound
+    notifications
+    scripting_logic # TODO(GunChleoc): Circular dependency
+    scripting_lua_interface
+    scripting_lua_table
+    sound
+    sound_constants
+    ui_basic
+    ui_basic_loading_message
+    widelands_options
+    wui_interactive # TODO(GunChleoc): Circular dependency
+    wui_game_tips
+)
+
+add_subdirectory(map_objects)

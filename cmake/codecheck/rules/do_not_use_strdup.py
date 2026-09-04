@@ -1,0 +1,19 @@
+#!/usr/bin/python3
+
+"""strdup isn't available on windows."""
+
+error_msg = 'Do not use strdup/strndup. Use std::string instead.'
+
+regexp = r'\bstrn?dup\s*\('
+
+allowed = [
+    'y = std::string(x)',
+
+    'y = new char[strlen(x)+1]',
+    'std::copy(x, x+strlen(x)+1, y)',
+]
+
+forbidden = [
+    'y = strdup(x)',
+    'y = strndup(x)',
+]

@@ -1,0 +1,13 @@
+# Automatically created by Widelands 1.2~git25960 (9a75e82@HEAD) Release
+
+[global]
+packet_version="1"
+map_w="64"
+map_h="64"
+nr_players="2"
+name=_"port_space"
+author="Unknown"
+descr=_"No description defined"
+hint=
+tags="artifacts,seafaring"
+addons=

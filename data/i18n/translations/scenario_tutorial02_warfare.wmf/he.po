@@ -1,0 +1,724 @@
+# Widelands PATH/TO/FILE.PO
+# Copyright (C) 2005-2026 Widelands Development Team
+# 
+# Translators:
+msgid ""
+msgstr ""
+"Project-Id-Version: Widelands\n"
+"Report-Msgid-Bugs-To: https://www.widelands.org/wiki/ReportingBugs/\n"
+"POT-Creation-Date: 2026-01-01 03:54+0000\n"
+"PO-Revision-Date: 2015-02-03 14:47+0000\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: Hebrew (http://app.transifex.com/widelands/widelands/language/he/)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: he\n"
+"Plural-Forms: nplurals=3; plural=(n == 1 && n % 1 == 0) ? 0 : (n == 2 && n % 1 == 0) ? 1: 2;\n"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:21
+msgid "Introduction"
+msgstr "מבוא"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:23
+msgid "Soldiers, Training and Warfare"
+msgstr "חיילים, אימון ולוחמה"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:24
+msgid ""
+"In this scenario, I’m going to tell you about soldiers, their training and "
+"their profession: warfare. Although Widelands is about building up, not "
+"burning down, there is an enemy you sometimes have to defeat. Yet warfare is"
+" mainly focused on economics, not on military strategies, and its mechanics "
+"deserve explanation."
+msgstr "בתרחיש הזה אספר לך על חיילים, האימון שלהם ומקצועם: לוחמה. אף ש-Widelands עוסק בבנייה ולא בהרס, יש אויב שלפעמים עליך להביסו. אך הלוחמה מתמקדת בעיקר בכלכלה, לא באסטרטגיה צבאית, והמנגנונים שלה ראויים להסבר."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:25
+msgid ""
+"I’ve set up a small village that contains the most important buildings. You "
+"also have enough wares, so you do not have to take care of your weapons "
+"production. In a real game, you will not have this luxury."
+msgstr "הקמתי כפר קטן שמכיל את המבנים החשובים ביותר. יש לך גם מספיק סחורות, כך שאינך צריך לדאוג לייצור הנשק שלך. במשחק אמיתי לא יהיו לך המותרות האלה."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:32
+msgid "Soldiers’ abilities"
+msgstr "יכולות החיילים"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:34
+msgid ""
+"New soldiers are created differently from normal workers: recruits will walk"
+" from a warehouse (or your headquarters) to the barracks where they will "
+"receive some basic training and become soldiers. Basic Barbarian soldiers do"
+" not use armor, they only need an ax."
+msgstr "חיילים חדשים נוצרים בצורה שונה מעובדים רגילים: טירונים ילכו ממחסן (או מהמפקדה שלך) אל הקסרקטין, שם הם יקבלו אימון בסיסי ויהפכו לחיילים. חיילים ברבריים בסיסיים אינם משתמשים בשריון, הם זקוקים רק לגרזן."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:35
+msgid ""
+"Take a look at the soldiers that are on their way to our military buildings."
+" They look different from normal workers: they have a health bar over their "
+"head that displays their remaining health, and they have four symbols, which"
+" symbolize the individual soldier’s current levels in the four different "
+"categories: health, attack, defense and evade."
+msgstr "הבט בחיילים שבדרכם למבנים הצבאיים שלנו. הם נראים שונה מעובדים רגילים: יש להם פס חיים מעל הראש שמציג את החיים שנותרו להם, וארבעה סמלים, שמסמלים את הרמות הנוכחיות של החייל בארבע הקטגוריות השונות: חיים, תקיפה, הגנה וחמיקה."
+
+#. TRANSLATORS: the current stats are: 3 health, 5 attack, 0 defense, 2 evade.
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:37
+msgid ""
+"If a Barbarian soldier is fully trained, he has level %1% health, level %2% "
+"attack, level %3% defense and level %4% evade. This is one fearsome warrior "
+"then! The individual abilities have the following meaning:"
+msgstr "אם חייל ברברי מאומן במלואו, יש לו רמת %1% בחיים, רמת %2% בתקיפה, רמת %3% בהגנה ורמת %4% בחמיקה. זהו אז לוחם מפחיד! למשמעות היכולות הפרטניות:"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:38
+msgid "Health:"
+msgstr "חיים:"
+
+#. TRANSLATORS: the current stats are: 13000 health, 2800 health gain.
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:40
+msgid ""
+"The total life of a soldier. A Barbarian soldier starts with %1% health, and"
+" he will gain %2% health with each health level."
+msgstr "סך כל החיים של חייל. חייל ברברי מתחיל עם %1% חיים, ויקבל %2% חיים נוספים בכל רמת חיים."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:41
+msgid "Attack:"
+msgstr "תקיפה:"
+
+#. TRANSLATORS: the current stats are: 1400 damage, gains 850 damage points.
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:43
+msgid ""
+"The amount of damage a soldier will inflict on the enemy when an attack is "
+"successful. A Barbarian soldier with attack level 0 inflicts ~%1% points of "
+"health damage when he succeeds in hitting an enemy. For each attack level, "
+"he gains %2% damage points."
+msgstr "כמות הנזק שחייל יגרום לאויב כאשר תקיפה מצליחה. חייל ברברי ברמת תקיפה 0 גורם כ-%1% נקודות נזק לחיים כאשר הוא מצליח לפגוע באויב. בכל רמת תקיפה, הוא מקבל %2% נקודות נזק נוספות."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:45
+msgid "Defense:"
+msgstr "הגנה:"
+
+#. TRANSLATORS: the current stats are: 3%. The calculated health value is 3395
+#. TRANSLATORS: The last two %% after the placeholder are the percent symbol.
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:48
+msgid ""
+"The defense is the percentage that is subtracted from the attack value. The "
+"Barbarians cannot train in this skill and therefore have always defense "
+"level 0, which means that the damage is always reduced by %1%%%. If an "
+"attacker with an attack value of 3500 points hits a Barbarian soldier, the "
+"Barbarian will lose 3500×%2%%% = %3% health."
+msgstr "ההגנה היא האחוז שמופחת מערך התקיפה. הברברים אינם יכולים להתאמן ביכולת הזו, ולכן תמיד יש להם רמת הגנה 0, כלומר הנזק תמיד מופחת ב-%1%%%. אם תוקף עם ערך תקיפה של 3500 נקודות פוגע בחייל ברברי, הברברי יאבד 3500×%2%%% = %3% חיים."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:49
+msgid "Evade:"
+msgstr "חמיקה:"
+
+#. TRANSLATORS: the current stats are: 25% evade, increases in steps of 15%.
+#. TRANSLATORS: The last two %% after the placeholder are the percent symbol.
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:52
+msgid ""
+"Evade is the chance that the soldier is able to dodge an attack. A level 0 "
+"Barbarian has a %1%%% chance to evade an attack, and this increases in steps"
+" of %2%%% for each level."
+msgstr "חמיקה היא הסיכוי שהחייל יצליח להתחמק מתקיפה. לברברי ברמה 0 יש סיכוי של %1%%% להתחמק מתקיפה, וזה עולה בקפיצות של %2%%% בכל רמה."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:57
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:79
+msgid "The Battle Arena"
+msgstr "זירת הקרב"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:59
+msgid "Now I have talked about training and levels. Let me elaborate on that."
+msgstr "עד כה דיברתי על אימון ורמות. תן לי להרחיב על כך."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:60
+msgid ""
+"A newly created soldier has no experience and is not very good at fighting. "
+"To make him stronger, you can build training sites."
+msgstr "לחייל שזה עתה נוצר אין ניסיון והוא לא ממש טוב בלחימה. כדי לחזק אותו, אתה יכול לבנות מתקני אימונים."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:61
+msgid ""
+"One of these training sites is the battle arena. It is a big and expensive "
+"building, and it trains soldiers in evade. Since soldiers get very hungry "
+"during their workout, this building needs a lot of food and strong beer. In "
+"a real game, you should have a good infrastructure before you build it."
+msgstr "אחד ממתקני האימונים הוא זירת הקרב. זהו מבנה גדול ויקר, והוא מאמן חיילים בחמיקה. מכיוון שחיילים מתרעבים מאוד במהלך האימון, המבנה הזה זקוק להרבה מזון ובירה חזקה. במשחק אמיתי, כדאי שיהיה לך תשתית טובה לפני שתבנה אותו."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:62
+msgid "To see evade training in action, build a battle arena."
+msgstr "כדי לראות אימון חמיקה בפעולה, בנה זירת קרב."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:63
+msgid ""
+"While we’re waiting for the battle arena, you’ll probably notice some "
+"soldiers walking around. They are automatically exchanged from time to time."
+" I’ll teach you about that later."
+msgstr "בזמן שאנחנו מחכים לזירת הקרב, כנראה תשים לב לכמה חיילים שמסתובבים באזור. הם מוחלפים אוטומטית מדי פעם. אלמד אותך על כך בהמשך."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:69
+msgid "Battle Arena"
+msgstr "גרזן קרב"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:71
+msgid "Build a battle arena"
+msgstr "בנה זירת קרב"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:72
+msgid "Build a battle arena. It is a big building."
+msgstr "בנה זירת קרב. זהו מבנה גדול."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:73
+msgid ""
+"Since the construction will take some time, you can change the game speed "
+"using %1$s and %2$s."
+msgstr "מכיוון שהבנייה תיקח זמן מה, אתה יכול לשנות את מהירות המשחק באמצעות %1$s ו-%2$s."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:81
+msgid "The Battle Arena Has Been Constructed"
+msgstr "זירת הקרב נבנתה"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:82
+msgid ""
+"Very good. Our battle arena has been finished, and the soldiers are already "
+"walking towards it."
+msgstr "מצוין. זירת הקרב שלנו הושלמה, והחיילים כבר בדרכם אליה."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:84
+msgid ""
+"The needed wares are also delivered there. For successful training, you need"
+" pitta bread and strong beer, as well as either fish or meat."
+msgstr "הסחורות הדרושות מגיעות גם הן לשם. לאימון מוצלח, דרושים לאפה ובירה חזקה, וכן דג או בשר."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:85
+msgid ""
+"For more information, you can have a look at the building’s help window, "
+"accessible via the question mark in every building’s window."
+msgstr "למידע נוסף, אתה יכול לעיין בחלון העזרה של המבנה, הנגיש דרך סימן השאלה שבחלון של כל מבנה."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:86
+msgid ""
+"To learn how far your soldiers have progressed in their training, you can "
+"have a look at their icons. They are modified by red dots:"
+msgstr "כדי לדעת כמה החיילים שלך התקדמו באימון, אתה יכול להביט בסמלים שלהם. הם מסומנים בנקודות אדומות:"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:87
+msgid ""
+"No red dots means that the soldier is not trained, so he has level 0. All "
+"your new recruits have this."
+msgstr "היעדר נקודות אדומות פירושו שהחייל לא מאומן, כלומר רמתו 0. לכל הטירונים החדשים שלך יש זאת."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:88
+msgid ""
+"With every successful training step, your soldier becomes stronger. This is "
+"indicated by a red dot. This soldier is on level 1 in evade training."
+msgstr "עם כל שלב אימון מוצלח, החייל שלך מתחזק. הדבר מסומן בנקודה אדומה. החייל הזה נמצא ברמה 1 באימון חמיקה."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:89
+msgid ""
+"When your soldier has reached the highest possible level (in this case level"
+" 2), this is indicated by a white background color."
+msgstr "כאשר החייל שלך הגיע לרמה הגבוהה ביותר האפשרית (במקרה הזה רמה 2), הדבר מסומן בצבע רקע לבן."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:95
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:97
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:115
+msgid "The Training Camp"
+msgstr "מחנה האימונים"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:98
+msgid ""
+"There is a second training site: the training camp. It is a big building "
+"too, and to complement the battle arena, it trains attack and health "
+"(remember, the Barbarian soldiers cannot be trained in defense)."
+msgstr "יש מתקן אימונים שני: מחנה האימונים. גם הוא מבנה גדול, ובהשלמה לזירת הקרב, הוא מאמן תקיפה וחיים (זכור, אי אפשר לאמן חיילים ברבריים בהגנה)."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:99
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:109
+msgid "Build a training camp."
+msgstr "בנה מחנה אימונים."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:105
+msgid "Training Camp"
+msgstr "מחנה אימונים"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:107
+msgid "Build a training camp"
+msgstr "בנה מחנה אימונים"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:108
+msgid ""
+"The battle arena only trains the soldiers in evade. To get the strongest "
+"possible soldier, you also need to build a training camp, which trains them "
+"in attack and health."
+msgstr "זירת הקרב מאמנת את החיילים בחמיקה בלבד. כדי לקבל את החייל החזק ביותר האפשרי, עליך גם לבנות מחנה אימונים, שמאמן אותם בתקיפה ובחיים."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:117
+msgid ""
+"Great, our training camp has now been finished, too. Now nothing will hinder"
+" us from getting the strongest warriors the world has ever seen."
+msgstr "מצוין, גם מחנה האימונים שלנו הושלם כעת. עכשיו שום דבר לא ימנע מאיתנו לקבל את הלוחמים החזקים ביותר שהעולם ראה אי פעם."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:118
+msgid ""
+"To train in the training camp, our soldiers need food like in the battle "
+"arena, but no strong beer. Instead, they need different axes for attack "
+"training and helmets for health training."
+msgstr "כדי להתאמן במחנה האימונים, החיילים שלנו זקוקים למזון כמו בזירת הקרב, אך לא לבירה חזקה. במקום זאת, הם זקוקים לגרזנים שונים לאימון תקיפה ולקסדות לאימון חיים."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:119
+msgid ""
+"This equipment is produced in smithies out of coal, iron, and sometimes "
+"gold. You will learn more about this in the second scenario of the Barbarian"
+" campaign."
+msgstr "הציוד הזה מיוצר בנפחיות מפחם, ברזל, ולפעמים זהב. תלמד עוד על כך בתרחיש השני של מערכת הברברים."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:120
+msgid ""
+"You should also keep in mind that each of the tribes in Widelands has its "
+"own way of training, so the buildings and wares are different. Also, the "
+"ability levels cannot be compared: an Imperial soldier has a base attack of "
+"%1% at level 0, while a Barbarian soldier at the same level only has a base "
+"attack of %2%."
+msgstr "כדאי גם לזכור שלכל אחד מהשבטים ב-Widelands יש דרך אימון משלו, כך שהמבנים והסחורות שונים. כמו כן, אי אפשר להשוות בין רמות היכולת: לחייל אימפריאלי יש תקיפת בסיס של %1% ברמה 0, בעוד שלחייל ברברי באותה רמה יש תקיפת בסיס של %2% בלבד."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:126
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:138
+msgid "Scout’s Hut"
+msgstr "בקתת הסייר"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:128
+msgid "Explore Your Surroundings"
+msgstr "חקור את הסביבה שלך"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:129
+msgid ""
+"Large parts of the map haven’t been explored yet. It might be a good idea to"
+" know which direction is best for expanding our empire."
+msgstr "חלקים גדולים מהמפה עדיין לא נחקרו. אולי כדאי לדעת לאיזה כיוון הכי טוב להרחיב את האימפריה שלנו."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:130
+msgid ""
+"You can try your luck and expand randomly, but this is risky. A safer way is"
+" to use a scout to explore unseen parts of the map. What if he finds "
+"mountains overflowing with gold?"
+msgstr "אתה יכול לנסות את מזלך ולהתרחב באקראי, אך זה מסוכן. דרך בטוחה יותר היא להשתמש בסייר כדי לחקור חלקים לא-ידועים של המפה. מה אם הוא ימצא הרים עמוסי זהב?"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:131
+msgid "We will need a scout’s hut to start exploring. It is a small building."
+msgstr "נצטרך בקתת סייר כדי להתחיל לחקור. זהו מבנה קטן."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:132
+msgid "Build a scout’s hut."
+msgstr "בנה בקתת סייר."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:140
+msgid "Build a scout’s hut"
+msgstr "בנה בקתת סייר"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:141
+msgid ""
+"It’s good to know your surroundings. A scout will explore unseen parts of "
+"the map for you."
+msgstr "טוב להכיר את הסביבה שלך. סייר יחקור עבורך חלקים לא-ידועים של המפה."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:142
+msgid "Build a Scout’s Hut."
+msgstr "בנה בקתת סייר."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:148
+msgid "Scout is ready"
+msgstr "הסייר מוכן"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:150
+msgid "Ready to go!"
+msgstr "מוכן לצאת לדרך!"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:151
+msgid ""
+"Well done! Your scout’s hut has been built. While our scout is moving in, "
+"let’s learn a little bit more about him."
+msgstr "כל הכבוד! בקתת הסייר שלך נבנתה. בזמן שהסייר שלנו עובר לגור בה, בוא נלמד עליו עוד קצת."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:152
+msgid ""
+"First of all, he will need to take some food with him on his scouting trips."
+" Fortunately, we have some rations in our warehouse."
+msgstr "קודם כל, הוא יצטרך לקחת איתו מזון למסעות הסיור שלו. למרבה המזל, יש לנו כמה מנות במחסן שלנו."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:153
+msgid ""
+"When provided with food, he will walk randomly around the area. You should "
+"follow his movement before fog of war hides what he saw."
+msgstr "כשיש לו מזון, הוא יסתובב באקראי באזור. כדאי לעקוב אחר תנועתו לפני שערפל הקרב מסתיר את מה שהוא ראה."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:159
+msgid "Scout"
+msgstr "צופה"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:161
+msgid "Explore the map"
+msgstr "חקור את המפה"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:162
+msgid "Wait for the scout to explore unseen areas."
+msgstr "המתן שהסייר יחקור אזורים לא-ידועים."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:163
+msgid "Observe your scout."
+msgstr "עקוב אחר הסייר שלך."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:169
+msgid "Scout made progress"
+msgstr "הסייר התקדם"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:171
+msgid "New horizons?"
+msgstr "אופקים חדשים?"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:172
+msgid ""
+"As you can see, scouts can go quite far. The good news is that there are no "
+"enemies around."
+msgstr "כפי שאתה יכול לראות, סיירים יכולים להתרחק למדי. החדשות הטובות הן שאין אויבים בסביבה."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:173
+msgid "You can use the minimap to see the exploration’s progress."
+msgstr "אתה יכול להשתמש במפה הממוזערת כדי לראות את התקדמות החקירה."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:174
+msgid ""
+"Don’t forget that scouting is hard work and as such cannot be done without "
+"provision of food."
+msgstr "אל תשכח שסיור הוא עבודה קשה, ולכן אי אפשר לבצע אותו בלי אספקת מזון."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:180
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:182
+msgid "Heroes and Rookies"
+msgstr "גיבורים וטירונים"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:183
+msgid ""
+"While our soldiers are training, let me tell you what we can do with them."
+msgstr "בזמן שהחיילים שלנו מתאמנים, תן לי לספר לך מה אנחנו יכולים לעשות איתם."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:184
+msgid ""
+"In every military building, you can set the preference for heroes (trained "
+"soldiers) or rookies. From time to time, a soldier will walk out of the "
+"building and be replaced by a stronger/weaker one automatically – this is "
+"what you saw earlier."
+msgstr "בכל מבנה צבאי, אתה יכול לקבוע העדפה לגיבורים (חיילים מאומנים) או לטירונים. מדי פעם, חייל ייצא מהמבנה ויוחלף אוטומטית בחייל חזק/חלש יותר – זה מה שראית קודם."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:185
+msgid ""
+"The initial setting depends on the type of the building. For the Barbarians,"
+" the sentry is the only building that prefers rookies by default. You should"
+" change this setting to fit your current needs."
+msgstr "ההגדרה ההתחלתית תלויה בסוג המבנה. אצל הברברים, הזקיף הוא המבנה היחיד שמעדיף טירונים כברירת מחדל. כדאי לך לשנות את ההגדרה הזו כך שתתאים לצרכיך הנוכחיים."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:186
+msgid ""
+"When you are expanding into no man’s land, you can make your buildings "
+"prefer rookies. When you are planning to attack, send heroes into that "
+"region. Conquered buildings always prefer heroes."
+msgstr "כשאתה מתרחב לשטח הפקר, אתה יכול לגרום למבנים שלך להעדיף טירונים. כשאתה מתכנן לתקוף, שלח גיבורים לאזור ההוא. מבנים כבושים תמיד מעדיפים גיבורים."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:192
+msgid "Soldier capacity"
+msgstr "קיבולת חיילים"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:194
+msgid "Adjusting the number of soldiers"
+msgstr "התאמת מספר החיילים"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:195
+msgid ""
+"There is another way how you can control the strength of a military "
+"building: by the number of soldiers stationed there. Just click on the arrow"
+" buttons to decrease or increase the desired number of soldiers. Every "
+"building has a maximum capacity. In case of the barrier, it is five, for "
+"example."
+msgstr "יש דרך נוספת לשלוט בעוצמה של מבנה צבאי: לפי מספר החיילים המוצבים בו. פשוט לחץ על כפתורי החצים כדי להקטין או להגדיל את מספר החיילים הרצוי. לכל מבנה יש קיבולת מרבית. במקרה של המחסום, למשל, היא חמישה."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:196
+msgid ""
+"If you wish to send a certain soldier away, you can simply click on it. It "
+"will then be replaced by another soldier."
+msgstr "אם ברצונך לשלוח חייל מסוים משם, אתה יכול פשוט ללחוץ עליו. הוא יוחלף אז בחייל אחר."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:197
+msgid ""
+"Let me also describe what the numbers in the status string mean. This string"
+" can contain an arrow and up to three numbers, e.g. ‘↑ 1 (+5) soldier (+2)’."
+msgstr "תן לי גם לתאר מה המספרים במחרוזת המצב אומרים. המחרוזת הזו יכולה להכיל חץ ועד שלושה מספרים, למשל '↑ 1 (+5) חייל (+2)'."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:198
+msgid ""
+"The arrow shows whether the building is set to prefer heroes (upwards arrow)"
+" or rookies (downwards arrow)."
+msgstr "החץ מראה אם המבנה מוגדר להעדיף גיבורים (חץ למעלה) או טירונים (חץ למטה)."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:199
+msgid ""
+"The first number describes how many soldiers are currently in this building."
+" In this example, only one soldier is left inside (each military building is"
+" always guarded by at least one soldier)."
+msgstr "המספר הראשון מתאר כמה חיילים נמצאים כרגע במבנה הזה. בדוגמה הזו, נותר רק חייל אחד בפנים (כל מבנה צבאי תמיד מוגן על ידי חייל אחד לפחות)."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:200
+msgid ""
+"The second number tells you how many additional soldiers reside in this "
+"building, but are currently outside. The five soldiers may be attacking an "
+"enemy. They will return when they have been successful."
+msgstr "המספר השני מספר לך כמה חיילים נוספים שוכנים במבנה הזה, אך נמצאים כרגע בחוץ. חמשת החיילים אולי תוקפים אויב. הם יחזרו כשיצליחו."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:201
+msgid ""
+"The third number indicates the missing soldiers. From the eight soldiers (1 "
+"+ 5 + 2) you wish to have here, two may have died. They will be replaced by "
+"new soldiers from your warehouse, if possible."
+msgstr "המספר השלישי מציין את החיילים החסרים. משמונת החיילים (1 + 5 + 2) שברצונך שיהיו כאן, ייתכן ששניים מתו. הם יוחלפו בחיילים חדשים מהמחסן שלך, אם אפשר."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:207
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:209
+msgid "Soldiers in the headquarters"
+msgstr "חיילים במפקדה"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:210
+msgid ""
+"Your headquarters has some capabilities of military sites: It conquers some "
+"land, the enemy can attack it directly, and the stored soldiers defend it "
+"and its surroundings when attacked. On the other hand, there’s a difference "
+"too: you can’t start an attack with the soldiers in your headquarters."
+msgstr "למפקדה שלך יש כמה מהיכולות של מוצבים צבאיים: היא כובשת שטח מסוים, האויב יכול לתקוף אותה ישירות, והחיילים המאוחסנים בה מגנים עליה ועל סביבתה כשהיא מותקפת. מצד שני, יש גם הבדל: אינך יכול להתחיל תקיפה עם החיילים שבמפקדה שלך."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:211
+msgid ""
+"The military capabilities of the headquarters are a big difference from "
+"plain warehouses that don’t conquer land, and need nearby military sites for"
+" defense. Soldiers stored in plain warehouses don’t participate in any "
+"fighting, and plain warehouses can’t be attacked directly."
+msgstr "היכולות הצבאיות של המפקדה שונות מאוד ממחסנים פשוטים שאינם כובשים שטח, וזקוקים למוצבים צבאיים סמוכים להגנה. חיילים המאוחסנים במחסנים פשוטים אינם משתתפים בשום קרב, ואי אפשר לתקוף מחסנים פשוטים ישירות."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:217
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:219
+msgid "Soldier settings of the headquarters"
+msgstr "הגדרות החיילים של המפקדה"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:220
+msgid ""
+"While all soldiers who happen to be in your headquarters help defending it, "
+"they are not permanently assigned to the headquarters, so they can be sent "
+"away any time when a military site needs a soldier. Fortunately you can also"
+" assign some soldiers to the defense of the headquarters the same way you "
+"set soldier capacity and preference for military sites. If you do so, the "
+"headquarters will only let surplus soldiers be sent to other buildings, but "
+"not soldiers from the assigned garrison."
+msgstr "בעוד שכל החיילים שנמצאים במקרה במפקדה שלך מסייעים בהגנה עליה, הם אינם משויכים אליה לצמיתות, כך שאפשר לשלוח אותם משם בכל עת כשמוצב צבאי זקוק לחייל. למרבה המזל, אתה יכול גם לשייך חלק מהחיילים להגנת המפקדה, באותה דרך שבה אתה קובע קיבולת חיילים והעדפה למוצבים צבאיים. אם תעשה זאת, המפקדה תאפשר לשלוח למבנים אחרים רק חיילים עודפים, אך לא חיילים מהחיל המשויך."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:221
+msgid ""
+"If you look at the status lines, you can see that your warehouse has nothing"
+" in it, but your headquarters has a ‘—’ sign initially. That means that "
+"there is no garrison set up to protect the headquarters, though there may "
+"still be some soldiers stored there. If you increase the desired number of "
+"soldiers to more than zero, then the headquarters will show the same soldier"
+" information as military sites in the status. Surplus soldiers are never "
+"shown in the status."
+msgstr "אם תסתכל בשורות המצב, תראה שבמחסן שלך אין כלום, אך למפקדה שלך יש בהתחלה סימן '—'. פירוש הדבר שלא הוגדר חיל להגנת המפקדה, אף שייתכן שעדיין יש בה חיילים מאוחסנים. אם תגדיל את מספר החיילים הרצוי מעל אפס, המפקדה תציג את אותו מידע על חיילים כמו מוצבים צבאיים במצב. חיילים עודפים לעולם אינם מוצגים במצב."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:227
+msgid "Dismantle your sentry"
+msgstr "פרק את הזקיף שלך"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:229
+msgid "Dismantling military buildings"
+msgstr "פירוק מבנים צבאיים"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:230
+msgid ""
+"You can only reduce the number of soldiers to one. The last soldier of a "
+"building will never come out (unless this building is attacked). If you want"
+" to have your soldier elsewhere, you will have to dismantle or burn down the"
+" building."
+msgstr "אתה יכול להקטין את מספר החיילים רק עד אחד. החייל האחרון במבנה לעולם לא ייצא ממנו (אלא אם המבנה מותקף). אם ברצונך שהחייל שלך יהיה במקום אחר, יהיה עליך לפרק או לשרוף את המבנה."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:231
+msgid ""
+"However, destroying a military building is always linked with a risk: the "
+"land is still yours, but it is no longer protected. Any enemy that builds "
+"his own military sites can take over that land without a fight, causing your"
+" buildings to burst into flames. Furthermore, some parts of the land can now"
+" be hidden under the fog of war. You should therefore only dismantle "
+"military buildings deep inside your territory where you are safe from "
+"enemies."
+msgstr "עם זאת, הריסת מבנה צבאי תמיד כרוכה בסיכון: השטח עדיין שלך, אך הוא כבר לא מוגן. כל אויב שבונה מוצבים צבאיים משלו יכול להשתלט על השטח הזה בלי קרב, ולגרום למבנים שלך לעלות באש. יתרה מכך, חלקים מהשטח עלולים כעת להיות מוסתרים תחת ערפל הקרב. לכן כדאי לפרק מבנים צבאיים רק עמוק בתוך הטריטוריה שלך, במקום שבו אתה מוגן מאויבים."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:232
+msgid ""
+"Have you seen your sentry? Since it cannot contain many soldiers and is next"
+" to a stronger barrier, it is rather useless."
+msgstr "ראית את הזקיף שלך? מכיוון שהוא לא יכול להכיל הרבה חיילים והוא נמצא ליד מחסום חזק יותר, הוא די חסר תועלת."
+
+#. TRANSLATORS: 'it' refers to the Barbarian sentry
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:234
+msgid "Dismantle it."
+msgstr "פרק אותו."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:235
+msgid ""
+"You can also use this opportunity to become familiar with the other options:"
+" the heroes/rookies preference and the capacity."
+msgstr "אתה יכול גם לנצל את ההזדמנות הזו כדי להכיר את שאר האפשרויות: העדפת הגיבורים/טירונים והקיבולת."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:241
+msgid "Soldiers, dismissed!"
+msgstr "חיילים, משוחררים!"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:243
+msgid "Dismantle your north-western sentry"
+msgstr "פרק את הזקיף הצפון-מערבי שלך"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:244
+msgid ""
+"You can control the number of soldiers stationed at a military site with the"
+" arrow buttons. If you want to get even your last soldier out, you will have"
+" to destroy it. However, it then will no longer protect your territory, "
+"which will make it vulnerable to hostile attacks."
+msgstr "אתה יכול לשלוט במספר החיילים המוצבים במוצב צבאי באמצעות כפתורי החצים. אם ברצונך להוציא ממנו אפילו את החייל האחרון, יהיה עליך להרוס אותו. עם זאת, הוא לא יגן עוד על הטריטוריה שלך, מה שיהפוך אותה לפגיעה בפני תקיפות עוינות."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:245
+msgid "Dismantle your sentry in the north-west, next to the barrier."
+msgstr "פרק את הזקיף שלך בצפון-מערב, ליד המחסום."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:251
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:264
+msgid "Enhance Your Fortress"
+msgstr "שדרג את המבצר שלך"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:253
+msgid "Enhancing Buildings"
+msgstr "שדרוג מבנים"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:254
+msgid ""
+"Well done. Now you know how to draw back your soldiers from the places where"
+" you don’t need them. It is time to tell you how to reinforce your front "
+"line."
+msgstr "כל הכבוד. עכשיו אתה יודע איך למשוך בחזרה את החיילים שלך מהמקומות שבהם אינך זקוק להם. הגיע הזמן לספר לך איך לחזק את קו החזית שלך."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:255
+msgid ""
+"Your fortress is already quite strong and conquers a lot of space. But there"
+" is an even bigger building: the citadel."
+msgstr "המבצר שלך כבר די חזק וכובש הרבה שטח. אך יש מבנה גדול אף יותר: המצודה."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:256
+msgid ""
+"Citadels can’t be built directly. Instead, you’ll have to construct a "
+"fortress first and then enhance it to a citadel. To do so, click on the "
+"fortress, then choose the ‘Enhance to Citadel’ button."
+msgstr "אי אפשר לבנות מצודות ישירות. במקום זאת, יהיה עליך לבנות קודם מבצר, ואז לשדרג אותו למצודה. לשם כך, לחץ על המבצר, ואז בחר בכפתור 'שדרג למצודה'."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:257
+msgid ""
+"Your soldiers will leave the fortress while the construction is going on. "
+"This means that your fortress will lose its military influence, as I "
+"described above."
+msgstr "החיילים שלך יעזבו את המבצר בזמן שהבנייה מתבצעת. פירוש הדבר שהמבצר שלך יאבד את השפעתו הצבאית, כפי שתיארתי למעלה."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:258
+msgid "Enhance your fortress to a citadel now."
+msgstr "שדרג את המבצר שלך למצודה עכשיו."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:266
+msgid "Enhance your fortress to a citadel"
+msgstr "שדרג את המבצר שלך למצודה"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:267
+msgid "Enhance your fortress to a mighty citadel."
+msgstr "שדרג את המבצר שלך למצודה אדירה."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:268
+msgid ""
+"The citadel can house 12 soldiers, and it is the biggest military building "
+"the Barbarians can build. It also costs a lot of resources and takes a long "
+"time to build. It is most suited to guard strategically important points "
+"like constricted points or mountains."
+msgstr "המצודה יכולה להכיל 12 חיילים, והיא המבנה הצבאי הגדול ביותר שהברברים יכולים לבנות. היא גם עולה הרבה משאבים ולוקח זמן רב לבנות אותה. היא מתאימה ביותר לשמירה על נקודות חשובות אסטרטגית כמו מעברים צרים או הרים."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:275
+msgid "Defeat your Enemy"
+msgstr "הבס את האויב שלך"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:277
+msgid "Defeat the Enemy"
+msgstr "הבס את האויב"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:278
+msgid ""
+"Great work, the citadel is finished. But what’s that? A hostile tribe has "
+"settled next to us while the citadel was under construction! Do you see how "
+"they took away a part of our land? And our lumberjack has now lost his place"
+" of work. This is what I was talking about. Let’s take our land back and "
+"defeat the enemy!"
+msgstr "עבודה מצוינת, המצודה הושלמה. אבל מה זה? שבט עוין התיישב לידנו בזמן שהמצודה הייתה בבנייה! אתה רואה איך הם לקחו חלק מהשטח שלנו? וחוטב העצים שלנו איבד כעת את מקום עבודתו. זה בדיוק מה שדיברתי עליו. בוא ניקח בחזרה את השטח שלנו ונביס את האויב!"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:279
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:290
+msgid ""
+"To attack a building, click on its doors, choose the number of soldiers that"
+" you wish to send and click on the ‘Attack’ button."
+msgstr "כדי לתקוף מבנה, לחץ על דלתותיו, בחר את מספר החיילים שברצונך לשלוח ולחץ על כפתור 'תקיפה'."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:279
+msgid ""
+"Your soldiers will come from all nearby military buildings. Likewise, the "
+"defenders will come from all nearby military buildings of the enemy and "
+"intercept your forces."
+msgstr "החיילים שלך יגיעו מכל המבנים הצבאיים הסמוכים. באופן דומה, המגנים יגיעו מכל המבנים הצבאיים הסמוכים של האויב ויירטו את הכוחות שלך."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:280
+msgid ""
+"Attack and conquer all military buildings of the enemy and destroy their "
+"headquarters."
+msgstr "תקוף וכבוש את כל המבנים הצבאיים של האויב והרוס את מפקדתו."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:286
+msgid "Defeat Your Enemy"
+msgstr "הבס את האויב שלך"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:288
+msgid "Defeat the enemy tribe"
+msgstr "הבס את שבט האויב"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:289
+msgid "Defeat the nearby enemy."
+msgstr "הבס את האויב הסמוך."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:295
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:297
+msgid "Conclusion"
+msgstr "סיכום"
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:298
+msgid ""
+"Thank you for playing this tutorial. I hope you enjoyed it and you learned "
+"how to create and train soldiers, how to control where they go and how to "
+"defeat an enemy. Did you see how easily you could overwhelm your enemy? "
+"Having trained soldiers is a huge advantage."
+msgstr "תודה שיחקת את המדריך הזה. אני מקווה שנהנית ולמדת איך ליצור ולאמן חיילים, איך לשלוט לאן הם הולכים ואיך להביס אויב. ראית כמה בקלות יכולת להכריע את האויב שלך? חיילים מאומנים הם יתרון עצום."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:299
+msgid ""
+"But a war is expensive, and not always the path leading to the goal. When "
+"setting up a new game, you can also choose peaceful win conditions. You "
+"should definitely try them out, they’re worth it."
+msgstr "אך מלחמה יקרה, ולא תמיד הדרך המובילה למטרה. כשמגדירים משחק חדש, אתה יכול גם לבחור בתנאי ניצחון שלווים. כדאי לך בהחלט לנסות אותם, הם שווים את זה."
+
+#: ../../../../data/campaigns/tutorial02_warfare.wmf/scripting/texts.lua:300
+msgid ""
+"You are now ready to play the campaigns. They will teach you about the "
+"different economies of the tribes. You can also play the remaining "
+"tutorials, but they are not crucial for succeeding in the campaigns."
+msgstr "אתה מוכן עכשיו לשחק את המערכות. הן ילמדו אותך על הכלכלות השונות של השבטים. אתה יכול גם לשחק את שאר המדריכים, אך הם אינם קריטיים להצלחה במערכות."

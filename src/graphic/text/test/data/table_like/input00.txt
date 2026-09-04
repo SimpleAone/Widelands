@@ -1,0 +1,16 @@
+<rt>
+<div width=10></div><div width=240>
+<p>
+<div width=80 background=638c57><p>Hello</p></div><space><div
+width=80 background=42deb7><p>Nice</p></div><space><div
+width=80 background=43f447><p>World</p></div>
+<br>
+
+<div width=80 background=404542 valign=center><p align=center>Upsy</p></div><space><div
+width=80 background=e21038><p>And more</p></div><space><div
+width=80 background=0c7e8f valign=center><p>Thats all</p></div>
+<br>
+
+</p>
+</div>
+</rt>
