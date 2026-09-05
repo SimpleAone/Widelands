@@ -20,6 +20,8 @@
 
 #include <memory>
 
+#include <cstdio>
+
 #include "base/log.h"
 #include "base/scoped_timer.h"
 #include "io/filesystem/filesystem.h"
@@ -73,6 +75,21 @@ WidelandsMapLoader::~WidelandsMapLoader() {  // NOLINT
  */
 int32_t WidelandsMapLoader::preload_map(bool const scenario, AddOns::AddOnsList* addons) {
 	assert(get_state() != State::kLoaded);
+
+	#ifdef __amigaos4__
+	/* The map list reads a header out of every map, and the maps are
+	   unpacked directories -- 56 of them, 661 files -- on a 9P share, where
+	   opening a file costs a round trip to the host. Choosing a map looked
+	   exactly like a hang because nothing on that path says anything.
+	   Counting them separates "slow" from "stuck", and reopening the log is
+	   what actually pushes it across: the share holds writes until close. */
+	{
+		static unsigned preloaded = 0;
+		log_info("AMIGA MAP PRELOAD: %u %s", ++preloaded, filename_.c_str());
+		std::fflush(stdout);
+		std::freopen("shared:widelands/widelands.out", "a", stdout);
+	}
+	#endif
 
 	map_.cleanup();
 
