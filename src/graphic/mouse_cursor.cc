@@ -110,6 +110,13 @@ void MouseCursor::set_use_sdl(bool init_use_sdl) {
 	#if defined(WL_AMIGAOS4_VIRTIO_NO_SHADERS)
 	// No GL-backed cursor images exist in this diagnostic configuration.
 	init_use_sdl = true;
+	#elif defined(WL_AMIGAOS4_VIRTIO_GL)
+	/* SDL draws its cursor into the window it renders into, and this port
+	   renders past SDL -- straight into the Intuition window -- so an SDL
+	   cursor is never composited onto anything the player sees. Widelands
+	   draws its own as an ordinary blit, which travels the same path as the
+	   rest of the screen. */
+	init_use_sdl = false;
 	#endif
 	use_sdl_ = init_use_sdl;
 
