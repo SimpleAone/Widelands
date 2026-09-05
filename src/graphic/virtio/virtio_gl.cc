@@ -188,10 +188,30 @@ bool present() {
 	 * permanent one: how long the worker is actually busy is the difference
 	 * between "several megabytes of texture is simply a lot of work" and
 	 * "something in there blocks", and those want opposite fixes. */
+	/* Only when this frame stands alone. A frame that follows closely on the
+	   last one is part of a stream, and there the layer's own judgement is
+	   right: a dropped frame is invisible, and the worker is 70-80ms busy on
+	   a heavy screen, so waiting for it halves the frame rate. Measured:
+	   submit=69ms read=9ms against interval=172ms, and this wait sits
+	   outside the backend's own total= figure, which is why it did not show
+	   up there.
+
+	   An isolated frame is the opposite case, and it is the one that was
+	   black: the splash screen presents three times and then nothing for the
+	   length of the atlas build, so its dropped frame is one nobody ever
+	   sees. Anything more than a quarter second after the previous present
+	   counts as isolated -- far longer than a stream's frame time, far
+	   shorter than a load. */
+	static Uint32 last_present = 0;
+	const Uint32 now = SDL_GetTicks();
+	const bool isolated = last_present == 0 || (now - last_present) > 250;
+	last_present = now;
 	unsigned waited = 0;
-	while (waited < 2000 && virtioBackendWorkerBusy()) {
-		SDL_Delay(1);
-		++waited;
+	if (isolated) {
+		while (waited < 2000 && virtioBackendWorkerBusy()) {
+			SDL_Delay(1);
+			++waited;
+		}
 	}
 	if (waited != 0 && frames < 8) {
 		log_info("VirtIO GL: waited %ums for the worker before frame %u", waited, frames);
