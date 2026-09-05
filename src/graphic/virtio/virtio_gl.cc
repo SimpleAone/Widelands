@@ -21,6 +21,7 @@
 
 #ifdef WL_AMIGAOS4_VIRTIO_GL
 
+#include <cstdio>
 #include <cstdlib>
 #include <string>
 
@@ -241,6 +242,12 @@ bool present() {
 		} else {
 			log_info("VirtIO GL: backend reported no status");
 		}
+		/* Push it out of the buffer. The log is redirected to a file on a 9P
+		   share, so it is block buffered and nothing reaches the host until
+		   the process exits -- which meant every reading of a running game
+		   cost a shutdown, and a run that hung told us nothing at all. Only
+		   on these readings, so a normal frame still pays nothing. */
+		std::fflush(stdout);
 	}
 	++frames;
 	return presented;

@@ -604,9 +604,27 @@ WLApplication::WLApplication(int const argc, char const* const* const argv)
 
 	// This was taken out of Graphic::initialize() to allow showing the splashscreen earlier.
 	// This is one of the slowest parts of the start up.
-	g_gr->rebuild_texture_atlas();
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
+	/* build_texture_atlas() throws if the terrain and road images do not fit
+	   in a single atlas, which depends entirely on GL_MAX_TEXTURE_SIZE. The
+	   throw left no trace: the log is block buffered on a 9P share, so the
+	   last partial block never reached the host and the log simply ended at
+	   the line before, looking exactly like a hang inside the atlas build.
+	   Reopening the file is what actually forces the handler to write -- a
+	   flush alone does not. */
+	try {
+		g_gr->rebuild_texture_atlas();
+	} catch (const std::exception& e) {
+		log_err("AMIGA STARTUP: rebuild_texture_atlas failed: %s", e.what());
+		std::fflush(stdout);
+		std::freopen("shared:widelands/widelands.out", "a", stdout);
+		throw;
+	}
 	log_info("AMIGA STARTUP CHECKPOINT: after rebuild_texture_atlas");
+	std::fflush(stdout);
+	std::freopen("shared:widelands/widelands.out", "a", stdout);
+	#else
+	g_gr->rebuild_texture_atlas();
 	#endif
 
 	// Try to detect configurations with inverted horizontal scroll
