@@ -10,6 +10,8 @@
 #include "graphic/virtio/gl_api.h"
 #include "graphic/virtio/virtgl_bridge.h"
 
+#include "base/log.h"
+
 #ifdef WL_AMIGAOS4_VIRTIO_GL
 
 #include <algorithm>
@@ -435,6 +437,12 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 		return;
 	}
 
+	static unsigned draws = 0;
+	if (draws < 4) {
+		log_info("VirtIO GL: draw %u, %d vertices, program %u", draws, count,
+		         current_program);
+	}
+	++draws;
 	wlgl_glBegin(mode == GL_LINES ? GL_LINES : GL_TRIANGLES);
 	for (GLsizei index = 0; index < count; ++index) {
 		const GLsizei vertex = first + index;
@@ -738,6 +746,15 @@ void glTexImage2D(GLenum target,
 	state.width = width;
 	state.height = height;
 	state.internal_format = internal_format;
+	/* The first few uploads, because this is the first place a real texture
+	   reaches the layer and a black screen with sound is what it looks like
+	   when one of them does not come back. */
+	static unsigned uploads = 0;
+	if (uploads < 4) {
+		log_info("VirtIO GL: texture %u upload %dx%d fmt=0x%x", texture, width,
+		         height, format);
+	}
+	++uploads;
 	/* No CPU copy is kept. The pixels go straight to the layer, which owns
 	   them from here; holding a second copy of every decoded image is what
 	   exhausted memory while Widelands built its texture atlases. Only the

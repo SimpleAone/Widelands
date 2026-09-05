@@ -105,8 +105,18 @@ const Image* ImageCache::get(std::string hash, const bool theme_lookup, const ui
 		auto it = images_.find(hash);
 
 		if (it == images_.end()) {
+			#ifdef __amigaos4__
+			/* Same reason as font_handler.cc: this port has no logic worker, and
+			 * NoteThreadSafeFunction decides whether to run inline by comparing
+			 * std::thread identities, which GCC's native thread backend does not
+			 * give reliably here. Asking to wait for a thread that is the caller
+			 * blocks forever -- the first cached image was where the game stopped,
+			 * black window and sound still playing. */
+			images_.insert(std::make_pair(hash, load_image(hash)));
+			#else
 			NoteThreadSafeFunction::instantiate(
 			   [this, &hash]() { images_.insert(std::make_pair(hash, load_image(hash))); }, true);
+			#endif
 			it = images_.find(hash);
 			assert(it != images_.end());
 		}

@@ -185,10 +185,17 @@ Texture::Texture(const GLuint texture, const Recti& subrect, int parent_w, int p
 Texture::~Texture() {
 	if (owns_texture_) {
 		uint32_t texture_id = blit_data_.texture_id;
-		#if defined(WL_AMIGAOS4_VIRTIO_NO_SHADERS)
+		#if defined(__amigaos4__)
 		/* Atlas construction destroys rejected temporary textures on the
-		 * initializer thread. Delete synchronously in diagnostic mode; the
-		 * deferred callback path is not needed and is unsafe on this OS4 port. */
+		 * initializer thread. Delete synchronously; the deferred callback path
+		 * is not needed and is unsafe on this OS4 port.
+		 *
+		 * This was guarded on the no-shader diagnostic build, which is why it
+		 * only surfaced once real draws were switched on: the first cached
+		 * cursor image destroyed a temporary texture, queued a cross-thread
+		 * callback nobody runs, and the game stopped there -- black window,
+		 * sound still playing, and a log that ends mid-sentence. The guard is
+		 * about threads, not about shaders, so it belongs to the port. */
 		Gl::State::instance().delete_texture(texture_id);
 		#else
 		NoteThreadSafeFunction::instantiate(

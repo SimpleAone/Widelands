@@ -407,6 +407,20 @@ void draw_minimap_static(Texture& texture,
                          const MiniMapLayer layers,
                          const bool draw_full,
                          uint16_t* const rows_drawn) {
+	#ifdef __amigaos4__
+	/* Directly, for the reason font_handler.cc and image_cache.cc give: this
+	   port has no logic worker, and waiting on a thread that is the caller
+	   never returns. */
+	{
+		const Widelands::Map& map = egbase.map();
+		const Widelands::Coords node =
+		   MapviewPixelFunctions::calc_node_and_triangle(map, 0, 0).node;
+		texture.lock();
+		do_draw_minimap(
+		   texture, egbase, player, Vector2i(node.x, node.y), layers, draw_full, rows_drawn);
+		texture.unlock(Texture::Unlock_Update);
+	}
+	#else
 	NoteThreadSafeFunction::instantiate(
 	   [&texture, &egbase, player, layers, draw_full, rows_drawn]() {
 		   const Widelands::Map& map = egbase.map();
@@ -419,6 +433,7 @@ void draw_minimap_static(Texture& texture,
 		   texture.unlock(Texture::Unlock_Update);
 	   },
 	   true);
+	#endif
 }
 
 std::unique_ptr<Texture> draw_minimap_final(const Texture& input_texture,

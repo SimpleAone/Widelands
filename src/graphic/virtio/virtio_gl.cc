@@ -25,6 +25,8 @@
 
 #include <SDL_video.h>
 
+#include "base/log.h"
+
 #include "graphic/virtio/virtgl_bridge.h"
 
 namespace {
@@ -58,6 +60,7 @@ bool initialize_driver() {
 	}
 	driver_open = true;
 	last_error_text.clear();
+	log_info("VirtIO GL: backend open");
 	return true;
 }
 
@@ -96,11 +99,13 @@ bool create_frame_target(int width, int height) {
 	}
 	if (!virtioBackendCreateFrameTarget(window, width, height)) {
 		fail("the backend refused a frame target of that size");
+		log_info("VirtIO GL: frame target %dx%d REFUSED", width, height);
 		return false;
 	}
 	target_ready = true;
 	target_width = width;
 	target_height = height;
+	log_info("VirtIO GL: frame target %dx%d ready", width, height);
 
 	/* Widelands hands over positions that are already in clip space -- its
 	   vertex shaders do nothing but pass attr_position through -- so both
@@ -137,12 +142,19 @@ bool present() {
 	/* The order every port performs: hand the captured frame over, submit it,
 	   then clear the capture for the next one. Doing it in any other order
 	   drops a frame or replays the last one. */
+	static unsigned frames = 0;
 	wlgl_virtglPreparePresent();
 	const bool presented = virtioBackendPresent();
 	wlgl_virtglEndFrameCapture();
 	if (!presented) {
 		fail("the backend refused the frame");
 	}
+	/* The first one, and then rarely: a present that starts working and then
+	   stops is a different problem from one that never worked. */
+	if (frames == 0 || (frames % 300) == 0) {
+		log_info("VirtIO GL: present %u -> %s", frames, presented ? "ok" : "refused");
+	}
+	++frames;
 	return presented;
 }
 
