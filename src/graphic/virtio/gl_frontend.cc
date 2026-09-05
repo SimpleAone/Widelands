@@ -395,12 +395,28 @@ bool read_attrib(const AttribArray& a, GLsizei vertex, float* out, int wanted) {
  * tile, which is how Widelands lays its terrain out, and differs only where
  * one spans a tile boundary. */
 void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
+	/* Every refusal below used to be silent, which is why the log could show a
+	   game presenting six hundred frames with not one triangle in them. Each
+	   reason reports once, and says which one it was. */
+	static bool told_mode = false, told_state = false, told_position = false;
 	if ((mode != GL_TRIANGLES && mode != GL_LINES) || count < 0) {
+		if (!told_mode) {
+			told_mode = true;
+			log_info("VirtIO GL: draw REFUSED, mode 0x%x count %d", mode, count);
+		}
 		set_error(GL_INVALID_VALUE);
 		return;
 	}
 	if (current_program == 0 || programs.count(current_program) == 0 ||
 	    !programs[current_program].linked || bound_buffer == 0) {
+		if (!told_state) {
+			told_state = true;
+			log_info("VirtIO GL: draw REFUSED, program %u known=%d linked=%d buffer %u",
+			         current_program, static_cast<int>(programs.count(current_program) != 0),
+			         static_cast<int>(programs.count(current_program) != 0 &&
+			                          programs[current_program].linked),
+			         bound_buffer);
+		}
 		set_error(GL_INVALID_OPERATION);
 		return;
 	}
@@ -436,6 +452,22 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 		}
 	}
 	if (position == nullptr) {
+		if (!told_position) {
+			told_position = true;
+			unsigned enabled = 0, mapped = 0;
+			for (unsigned i = 0; i < kMaxAttribs; ++i) {
+				if (attribs[i].enabled) {
+					++enabled;
+					if (program.attribute_kind.count(static_cast<GLint>(i)) != 0) {
+						++mapped;
+					}
+				}
+			}
+			log_info("VirtIO GL: draw REFUSED, no position: program %u, %u enabled arrays, "
+			         "%u of them named, %u names known",
+			         current_program, enabled, mapped,
+			         static_cast<unsigned>(program.attribute_kind.size()));
+		}
 		set_error(GL_INVALID_OPERATION);
 		return;
 	}
@@ -593,7 +625,15 @@ void glGetIntegerv(GLenum name, GLint* value) {
 		return;
 	}
 	if (name == GL_MAX_TEXTURE_SIZE) {
-		*value = 8192;
+		/* Asked of the layer rather than claimed here. It caps textures at its
+		   own maximum and *downscales* anything larger without a word, so a
+		   number invented at this end would have Widelands build atlases eight
+		   times too big and every coordinate in them wrong -- silently, which is
+		   the worst kind. */
+		wlgl_glGetIntegerv(GL_MAX_TEXTURE_SIZE, value);
+		if (*value <= 0) {
+			*value = 1024;
+		}
 	} else {
 		set_error(GL_INVALID_ENUM);
 		*value = 0;

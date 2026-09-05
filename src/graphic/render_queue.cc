@@ -20,6 +20,7 @@
 
 #include <algorithm>
 
+#include "base/log.h"
 #include "base/rect.h"
 #include "base/wexception.h"
 #include "graphic/gl/blit_program.h"
@@ -219,6 +220,18 @@ void RenderQueue::draw(const int screen_width, const int screen_height) {
 	// can happen on large zoom and huge screen resolution (> 3440 x 1400), we
 	// do not crash anymore. The linked bug contains a discussion how to fix the
 	// issue properly, but it was too much work to address at the time.
+
+#ifdef __amigaos4__
+	/* Which end of the chain is empty: a queue with nothing in it is a
+	   different problem from a queue whose items are refused further down. */
+	static unsigned queue_reports = 0;
+	if (queue_reports < 4) {
+		++queue_reports;
+		log_info("VirtIO GL: queue %d opaque, %d blended, screen %dx%d",
+		         static_cast<int>(opaque_items_.size()), static_cast<int>(blended_items_.size()),
+		         screen_width, screen_height);
+	}
+#endif
 
 	Gl::State::instance().bind_framebuffer(0, 0);
 	glViewport(0, 0, screen_width, screen_height);

@@ -49,6 +49,7 @@ void wlgl_glTexSubImage2D(GLenum target, GLint level, GLint x, GLint y,
                           GLsizei width, GLsizei height, GLenum format,
                           GLenum type, const GLvoid* pixels);
 void wlgl_glTexParameteri(GLenum target, GLenum name, GLint value);
+void wlgl_glGetIntegerv(GLenum name, GLint* value);
 
 /* Fixed state. */
 void wlgl_glEnable(GLenum capability);
