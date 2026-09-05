@@ -62,6 +62,11 @@ void wlgl_glScissor(GLint x, GLint y, GLsizei width, GLsizei height);
 void wlgl_glMatrixMode(GLenum mode);
 void wlgl_glLoadIdentity(void);
 void wlgl_glDepthMask(GLboolean flag);
+/* Widelands maps its z-layers onto [1, -1] and its first items land within
+   one part in 65535 of the far plane, which is why it asks for GL_LEQUAL.
+   The frontend accepted the call and dropped it: the layer was never told,
+   and kept its own GL_LESS. */
+void wlgl_glDepthFunc(GLenum func);
 void wlgl_glTexEnvf(GLenum target, GLenum name, GLfloat value);
 
 /* The frame boundary, in the order every port performs it. */

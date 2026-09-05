@@ -357,7 +357,8 @@ void glDeleteTextures(GLsizei count, const GLuint* objects) {
 	delete_objects(count, objects, &textures);
 }
 
-void glDepthFunc(GLenum) {
+void glDepthFunc(GLenum func) {
+	wlgl_glDepthFunc(func);
 }
 void glDisable(GLenum capability) {
 	wlgl_glDisable(capability);
