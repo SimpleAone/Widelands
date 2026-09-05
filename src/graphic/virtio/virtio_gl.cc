@@ -154,6 +154,33 @@ bool present() {
 	if (frames == 0 || (frames % 300) == 0) {
 		log_info("VirtIO GL: present %u -> %s", frames, presented ? "ok" : "refused");
 	}
+	/* The backend's own account of the frame, once it has had one to work
+	   with. The status is many lines in one buffer, so it goes out a line at
+	   a time -- a single log_info of the whole thing is what a 512-byte
+	   buffer silently truncated last time, taking the geometry counts with
+	   it. */
+	if (frames == 1 || frames == 2) {
+		char status[8192];
+		const unsigned written = virtioBackendStatus(status, sizeof(status));
+		if (written != 0u) {
+			status[sizeof(status) - 1] = '\0';
+			char* line = status;
+			while (*line != '\0') {
+				char* end = line;
+				while (*end != '\0' && *end != '\n') {
+					++end;
+				}
+				const bool more = *end == '\n';
+				*end = '\0';
+				if (*line != '\0') {
+					log_info("VirtIO GL: %s", line);
+				}
+				line = more ? end + 1 : end;
+			}
+		} else {
+			log_info("VirtIO GL: backend reported no status");
+		}
+	}
 	++frames;
 	return presented;
 }

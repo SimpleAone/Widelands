@@ -89,6 +89,13 @@ bool virtioBackendPresent();
 
 /* SDL and Intuition meet in exactly one place; this is it. */
 struct Window* virtioWindowFromSDL(SDL_Window* window);
+
+/* What the backend did with the frame: how many batches it was handed, how
+   many it drew, how many vertices, whether the submit failed and whether the
+   target was lost. The other ports print this on a key; Widelands has no
+   such key, and without it a frame that vanishes inside the backend is
+   indistinguishable from one that was never submitted. */
+unsigned virtioBackendStatus(char* out, unsigned size);
 }  // extern "C"
 
 #endif  // WL_GRAPHIC_VIRTIO_VIRTGL_BRIDGE_H
