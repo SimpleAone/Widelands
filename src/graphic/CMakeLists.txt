@@ -337,6 +337,26 @@ wl_library(graphic_functions
     widelands_options
 )
 
+# The virtio-gl-hyper layer is compiled here from its own directory, with
+# virtgl_rename.h forced in front of every one of its translation units. That
+# is what makes its entry points link as wlgl_* so gl_frontend.cc can keep the
+# real GL names -- Widelands calls those -- without either side being edited.
+if(OPTION_AMIGAOS4_VIRTIO_GL)
+  set_source_files_properties(
+    ${VIRTGL_LAYER_DIR}/virtgl_compat.cpp
+    ${VIRTGL_LAYER_DIR}/virtio_backend.cpp
+    ${VIRTGL_LAYER_DIR}/virtgl_os4.cpp
+    ${VIRTGL_LAYER_DIR}/serial_log.cpp
+    PROPERTIES
+      COMPILE_OPTIONS "-include;${CMAKE_CURRENT_SOURCE_DIR}/virtio/virtgl_rename.h;-fno-exceptions;-fno-rtti"
+      COMPILE_DEFINITIONS "USE_VIRTGL"
+      INCLUDE_DIRECTORIES "${VIRTGL_LAYER_DIR};${VIRTGL_INCLUDE_DIR}")
+  set_source_files_properties(
+    ${VIRTGL_LAYER_DIR}/virtio_window_os4.c
+    PROPERTIES
+      INCLUDE_DIRECTORIES "${VIRTGL_LAYER_DIR};${VIRTGL_INCLUDE_DIR}")
+endif()
+
 # Base library
 
 wl_library(graphic
@@ -355,8 +375,19 @@ wl_library(graphic
     virtio/gl_frontend.cc
     virtio/virgl_encoder.c
     virtio/virgl_encoder.h
+    virtio/virtgl_bridge.h
+    virtio/virtgl_rename.h
     virtio/virtio_gl.cc
     virtio/virtio_gl.h
+    # The virtio-gl-hyper fixed-function layer, compiled from where the games
+    # build it. See virtgl_rename.h: it is forced in front of these three so
+    # their entry points link as wlgl_*, because gl_frontend.cc owns the real
+    # GL names. Not one line of the layer itself changes.
+    ${VIRTGL_LAYER_DIR}/virtgl_compat.cpp
+    ${VIRTGL_LAYER_DIR}/virtio_backend.cpp
+    ${VIRTGL_LAYER_DIR}/virtgl_os4.cpp
+    ${VIRTGL_LAYER_DIR}/serial_log.cpp
+    ${VIRTGL_LAYER_DIR}/virtio_window_os4.c
     rendertarget.cc
     rendertarget.h
     road_segments.cc

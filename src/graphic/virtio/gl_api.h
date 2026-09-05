@@ -28,6 +28,11 @@ using GLsizeiptr = std::ptrdiff_t;
 #define GL_ONE 1
 #define GL_NO_ERROR 0
 #define GL_LINES 0x0001
+/* Fixed-function matrix modes. Widelands never sets a matrix -- its vertex
+   shaders pass positions through in clip space -- but the layer underneath
+   has a matrix stack, so it is told to leave both identity. */
+#define GL_MODELVIEW 0x1700
+#define GL_PROJECTION 0x1701
 #define GL_TRIANGLES 0x0004
 #define GL_LEQUAL 0x0203
 #define GL_SRC_ALPHA 0x0302

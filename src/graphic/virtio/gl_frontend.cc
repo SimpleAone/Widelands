@@ -8,10 +8,12 @@
  */
 
 #include "graphic/virtio/gl_api.h"
+#include "graphic/virtio/virtgl_bridge.h"
 
 #ifdef WL_AMIGAOS4_VIRTIO_GL
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <map>
 #include <set>
@@ -27,12 +29,51 @@ struct ShaderState {
 	bool compiled{false};
 };
 
+/* What a vertex attribute means.
+ *
+ * Widelands names its attributes, and the names are unambiguous across all
+ * eight of its programs -- there are only ten of them in total. That is what
+ * makes the translation possible without touching a shader: the name says
+ * whether a float pair is a position, a texture coordinate or an atlas
+ * offset, and the fixed-function layer below has a place for each. */
+enum class AttrKind {
+	kUnknown,
+	kPosition,
+	kTexturePosition,
+	kTextureOffset,
+	kMaskTexturePosition,
+	kDitherTexturePosition,
+	kBrightness,
+	kColor,
+	kBlend,
+	kOverlay,
+	kProgramFlavor
+};
+
+AttrKind attr_kind_of(const std::string& name) {
+	if (name == "attr_position") { return AttrKind::kPosition; }
+	if (name == "attr_texture_position") { return AttrKind::kTexturePosition; }
+	if (name == "attr_texture_offset") { return AttrKind::kTextureOffset; }
+	if (name == "attr_mask_texture_position") { return AttrKind::kMaskTexturePosition; }
+	if (name == "attr_dither_texture_position") { return AttrKind::kDitherTexturePosition; }
+	if (name == "attr_brightness") { return AttrKind::kBrightness; }
+	if (name == "attr_color") { return AttrKind::kColor; }
+	if (name == "attr_blend") { return AttrKind::kBlend; }
+	if (name == "attr_overlay") { return AttrKind::kOverlay; }
+	if (name == "attr_program_flavor") { return AttrKind::kProgramFlavor; }
+	return AttrKind::kUnknown;
+}
+
 struct ProgramState {
 	std::set<GLuint> shaders;
 	std::string log;
 	bool linked{false};
 	std::map<std::string, GLint> attributes;
 	std::map<std::string, GLint> uniforms;
+	/* Filled in as locations are handed out, so a draw can ask what a
+	   location means without searching the map by value. */
+	std::map<GLint, AttrKind> attribute_kind;
+	std::map<GLint, std::string> uniform_name;
 };
 
 struct TextureState {
@@ -45,6 +86,24 @@ struct TextureState {
 struct BufferState {
 	std::vector<unsigned char> bytes;
 };
+
+struct AttribArray {
+	bool enabled{false};
+	GLint size{0};
+	GLenum type{0};
+	GLsizei stride{0};
+	std::size_t offset{0};
+	GLuint buffer{0};
+};
+
+constexpr unsigned kMaxAttribs = 16;
+AttribArray attribs[kMaxAttribs];
+
+/* The uniforms that carry geometry rather than a sampler unit. u_z_value is
+   the clip-space z every vertex shader writes; u_texture_dimensions scales
+   the atlas coordinate the terrain and dither programs compute. */
+float uniform_z_value = 0.0f;
+float uniform_texture_dimensions[2] = {1.0f, 1.0f};
 
 struct FramebufferState {
 	GLuint colour_texture{0};
@@ -121,6 +180,7 @@ void glActiveTexture(GLenum texture) {
 		return;
 	}
 	active_texture_unit = texture - GL_TEXTURE0;
+	wlgl_glActiveTextureARB(texture);
 }
 
 void glAttachShader(GLuint program, GLuint shader) {
@@ -165,11 +225,13 @@ void glBindTexture(GLenum target, GLuint texture) {
 		return;
 	}
 	bound_textures[active_texture_unit] = texture;
+	wlgl_glBindTexture(target, texture);
 }
 
 void glBlendEquation(GLenum) {
 }
-void glBlendFunc(GLenum, GLenum) {
+void glBlendFunc(GLenum source, GLenum destination) {
+	wlgl_glBlendFunc(source, destination);
 }
 
 void glBufferData(GLenum target, GLsizeiptr size, const void* data, GLenum usage) {
@@ -199,8 +261,8 @@ GLenum glCheckFramebufferStatus(GLenum target) {
 	return 0;
 }
 
-void glClear(GLbitfield) {
-	/* Clear state is accepted; VirGL emission belongs to the frame encoder. */
+void glClear(GLbitfield mask) {
+	wlgl_glClear(mask);
 }
 
 void glCompileShader(GLuint shader) {
@@ -249,17 +311,85 @@ void glDeleteShader(GLuint shader) {
 	shaders.erase(shader);
 }
 void glDeleteTextures(GLsizei count, const GLuint* objects) {
+	wlgl_glDeleteTextures(count, objects);
 	delete_objects(count, objects, &textures);
 }
 
 void glDepthFunc(GLenum) {
 }
-void glDisable(GLenum) {
+void glDisable(GLenum capability) {
+	wlgl_glDisable(capability);
 }
-void glDisableVertexAttribArray(GLuint) {
+void glVertexAttribPointer(GLuint index, GLint size, GLenum type, GLboolean,
+                           GLsizei stride, const void* pointer) {
+	if (index >= kMaxAttribs || size < 1 || size > 4) {
+		set_error(GL_INVALID_VALUE);
+		return;
+	}
+	AttribArray& a = attribs[index];
+	a.size = size;
+	a.type = type;
+	a.stride = stride;
+	/* A byte offset into whatever buffer is bound now, which is how a
+	   buffer-backed attribute is specified. */
+	a.offset = reinterpret_cast<std::size_t>(pointer);
+	a.buffer = bound_buffer;
 }
 
-void glDrawArrays(GLenum mode, GLint, GLsizei count) {
+void glDisableVertexAttribArray(GLuint index) {
+	if (index < kMaxAttribs) {
+		attribs[index].enabled = false;
+	}
+}
+
+
+/* Reads one attribute of one vertex out of the bound buffer.
+ *
+ * Widelands uploads its vertices with glBufferData and points the attributes
+ * at byte offsets inside that buffer, so the data is here and the descriptors
+ * say how to walk it. Everything it sends is float; anything else would be a
+ * program this translation has not seen. */
+bool read_attrib(const AttribArray& a, GLsizei vertex, float* out, int wanted) {
+	if (!a.enabled || a.type != GL_FLOAT || a.buffer == 0) {
+		return false;
+	}
+	const auto found = buffers.find(a.buffer);
+	if (found == buffers.end()) {
+		return false;
+	}
+	const std::vector<unsigned char>& bytes = found->second.bytes;
+	const std::size_t stride =
+	   a.stride > 0 ? static_cast<std::size_t>(a.stride)
+	                : static_cast<std::size_t>(a.size) * sizeof(float);
+	const std::size_t base = a.offset + stride * static_cast<std::size_t>(vertex);
+	const int count = a.size < wanted ? a.size : wanted;
+	if (base + static_cast<std::size_t>(count) * sizeof(float) > bytes.size()) {
+		return false;
+	}
+	for (int i = 0; i < count; ++i) {
+		float value;
+		std::memcpy(&value, &bytes[base + static_cast<std::size_t>(i) * sizeof(float)],
+		            sizeof(float));
+		out[i] = value;
+	}
+	return true;
+}
+
+/* The translation itself.
+ *
+ * Widelands' vertex shaders pass their attributes through untouched -- every
+ * one of them writes gl_Position = vec4(attr_position, u_z_value, 1.) -- and
+ * its fragment shaders come down to texture times colour, which is what the
+ * fixed-function layer does natively. So there is nothing to compile: walking
+ * the array and feeding the layer one vertex at a time produces the same
+ * image the shader would have.
+ *
+ * The two exceptions are terrain and dither, whose fragment shaders index a
+ * texture atlas with a per-fragment fract(). That is computed here per vertex
+ * instead. It agrees with the shader wherever a triangle stays inside one
+ * tile, which is how Widelands lays its terrain out, and differs only where
+ * one spans a tile boundary. */
+void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 	if ((mode != GL_TRIANGLES && mode != GL_LINES) || count < 0) {
 		set_error(GL_INVALID_VALUE);
 		return;
@@ -269,9 +399,99 @@ void glDrawArrays(GLenum mode, GLint, GLsizei count) {
 		set_error(GL_INVALID_OPERATION);
 		return;
 	}
-	/* Diagnostic no-shader mode intentionally discards valid draws.  Clears,
-	 * event processing and direct VirtIO presentation still exercise the full
-	 * application/window/backend lifecycle. */
+
+	const ProgramState& program = programs[current_program];
+
+	/* Which location carries what, looked up once for the whole draw. */
+	const AttribArray* position = nullptr;
+	const AttribArray* texture_position = nullptr;
+	const AttribArray* texture_offset = nullptr;
+	const AttribArray* second_texture = nullptr;
+	const AttribArray* brightness = nullptr;
+	const AttribArray* colour = nullptr;
+	for (unsigned i = 0; i < kMaxAttribs; ++i) {
+		if (!attribs[i].enabled) {
+			continue;
+		}
+		const auto kind = program.attribute_kind.find(static_cast<GLint>(i));
+		if (kind == program.attribute_kind.end()) {
+			continue;
+		}
+		switch (kind->second) {
+		case AttrKind::kPosition: position = &attribs[i]; break;
+		case AttrKind::kTexturePosition: texture_position = &attribs[i]; break;
+		case AttrKind::kTextureOffset: texture_offset = &attribs[i]; break;
+		case AttrKind::kMaskTexturePosition:
+		case AttrKind::kDitherTexturePosition: second_texture = &attribs[i]; break;
+		case AttrKind::kBrightness: brightness = &attribs[i]; break;
+		case AttrKind::kColor:
+		case AttrKind::kBlend:
+		case AttrKind::kOverlay: colour = &attribs[i]; break;
+		default: break;
+		}
+	}
+	if (position == nullptr) {
+		set_error(GL_INVALID_OPERATION);
+		return;
+	}
+
+	wlgl_glBegin(mode == GL_LINES ? GL_LINES : GL_TRIANGLES);
+	for (GLsizei index = 0; index < count; ++index) {
+		const GLsizei vertex = first + index;
+
+		float rgba[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+		if (colour != nullptr) {
+			read_attrib(*colour, vertex, rgba, 4);
+			if (colour->size < 4) {
+				rgba[3] = 1.0f;
+			}
+		}
+		if (brightness != nullptr) {
+			float value = 1.0f;
+			if (read_attrib(*brightness, vertex, &value, 1)) {
+				/* clr.rgb *= var_brightness, which is exactly what the layer
+				   does with a vertex colour under GL_MODULATE. */
+				rgba[0] *= value;
+				rgba[1] *= value;
+				rgba[2] *= value;
+			}
+		}
+		wlgl_glColor4f(rgba[0], rgba[1], rgba[2], rgba[3]);
+
+		if (texture_position != nullptr) {
+			float uv[2] = {0.0f, 0.0f};
+			read_attrib(*texture_position, vertex, uv, 2);
+			if (texture_offset != nullptr) {
+				/* The atlas: fract() clamped inside a margin, then scaled by
+				   the tile's size and moved to its corner. The margin is the
+				   shader's own, and it exists so a sample never lands on a
+				   neighbouring tile. */
+				const float margin = 1e-2f;
+				float offset[2] = {0.0f, 0.0f};
+				read_attrib(*texture_offset, vertex, offset, 2);
+				for (int c = 0; c < 2; ++c) {
+					float f = uv[c] - std::floor(uv[c]);
+					if (f < margin) { f = margin; }
+					if (f > 1.0f - margin) { f = 1.0f - margin; }
+					uv[c] = offset[c] + uniform_texture_dimensions[c] * f;
+				}
+			}
+			wlgl_glTexCoord2f(uv[0], uv[1]);
+		}
+		if (second_texture != nullptr) {
+			float uv[2] = {0.0f, 0.0f};
+			read_attrib(*second_texture, vertex, uv, 2);
+			wlgl_glMultiTexCoord2fARB(GL_TEXTURE1, uv[0], uv[1]);
+		}
+
+		float xyz[3] = {0.0f, 0.0f, uniform_z_value};
+		read_attrib(*position, vertex, xyz, 3);
+		if (position->size < 3) {
+			xyz[2] = uniform_z_value;
+		}
+		wlgl_glVertex3f(xyz[0], xyz[1], xyz[2]);
+	}
+	wlgl_glEnd();
 }
 
 void glDrawBuffer(GLenum buffer) {
@@ -279,10 +499,15 @@ void glDrawBuffer(GLenum buffer) {
 		set_error(GL_INVALID_ENUM);
 	}
 }
-void glEnable(GLenum) {
+void glEnable(GLenum capability) {
+	wlgl_glEnable(capability);
 }
-void glEnableVertexAttribArray(GLuint) {
+void glEnableVertexAttribArray(GLuint index) {
+	if (index < kMaxAttribs) {
+		attribs[index].enabled = true;
+	}
 }
+
 void glFlush(void) {
 }
 
@@ -304,7 +529,12 @@ void glGenFramebuffers(GLsizei count, GLuint* objects) {
 	generate_objects(count, objects, &framebuffers);
 }
 void glGenTextures(GLsizei count, GLuint* objects) {
-	generate_objects(count, objects, &textures);
+	/* The layer hands out the names, so both sides agree on them and a
+	   texture the frontend records is the same one the layer uploads to. */
+	wlgl_glGenTextures(count, objects);
+	for (GLsizei i = 0; i < count; ++i) {
+		textures[objects[i]] = TextureState();
+	}
 }
 
 GLint glGetAttribLocation(GLuint program, const GLchar* name) {
@@ -323,6 +553,7 @@ GLint glGetAttribLocation(GLuint program, const GLchar* name) {
 	}
 	const GLint location = static_cast<GLint>(locations.size());
 	locations.emplace(name, location);
+	programs[program].uniform_name.emplace(location, name);
 	return location;
 }
 
@@ -507,32 +738,35 @@ void glTexImage2D(GLenum target,
 	state.width = width;
 	state.height = height;
 	state.internal_format = internal_format;
-	#ifdef WL_AMIGAOS4_VIRTIO_NO_SHADERS
-	/* Draws are discarded in this diagnostic mode. Keeping a CPU copy of every
-	 * decoded image exhausts AmigaOS memory while Widelands builds its texture
-	 * atlases, so retain only the object and dimension metadata. */
+	/* No CPU copy is kept. The pixels go straight to the layer, which owns
+	   them from here; holding a second copy of every decoded image is what
+	   exhausted memory while Widelands built its texture atlases. Only the
+	   size stays behind, for the queries Widelands makes about it. */
+	wlgl_glTexImage2D(target, level, internal_format, width, height, border,
+	                  format, type, pixels);
 	state.pixels.clear();
-	#else
-	const size_t size = static_cast<size_t>(width) * static_cast<size_t>(height) * 4;
-	state.pixels.resize(size);
-	if (pixels != nullptr && size > 0) {
-		std::memcpy(state.pixels.data(), pixels, size);
-	}
-	#endif
 }
 
-void glTexParameteri(GLenum target, GLenum, GLint) {
+void glTexParameteri(GLenum target, GLenum name, GLint value) {
 	if (target != GL_TEXTURE_2D || bound_textures[active_texture_unit] == 0) {
 		set_error(GL_INVALID_OPERATION);
+		return;
 	}
+	wlgl_glTexParameteri(target, name, value);
 }
 
-void glUniform1f(GLint location, GLfloat) {
+void glUniform1f(GLint location, GLfloat value) {
 	if (location < 0) {
 		return;
 	}
 	if (current_program == 0) {
 		set_error(GL_INVALID_OPERATION);
+		return;
+	}
+	const auto& names = programs[current_program].uniform_name;
+	const auto found = names.find(location);
+	if (found != names.end() && found->second == "u_z_value") {
+		uniform_z_value = value;
 	}
 }
 void glUniform1i(GLint location, GLint) {
@@ -543,8 +777,19 @@ void glUniform1i(GLint location, GLint) {
 		set_error(GL_INVALID_OPERATION);
 	}
 }
-void glUniform2f(GLint location, GLfloat, GLfloat) {
+void glUniform2f(GLint location, GLfloat x, GLfloat y) {
 	if (location < 0) {
+		return;
+	}
+	if (current_program != 0) {
+		const auto& names = programs[current_program].uniform_name;
+		const auto found = names.find(location);
+		if (found != names.end() && found->second == "u_texture_dimensions") {
+			uniform_texture_dimensions[0] = x;
+			uniform_texture_dimensions[1] = y;
+		}
+	}
+	if (false) {
 		return;
 	}
 	if (current_program == 0) {
@@ -560,11 +805,6 @@ void glUseProgram(GLuint program) {
 	current_program = program;
 }
 
-void glVertexAttribPointer(GLuint, GLint, GLenum, GLboolean, GLsizei, const void*) {
-	if (bound_buffer == 0) {
-		set_error(GL_INVALID_OPERATION);
-	}
-}
 void glViewport(GLint, GLint, GLsizei width, GLsizei height) {
 	if (width < 0 || height < 0) {
 		set_error(GL_INVALID_VALUE);

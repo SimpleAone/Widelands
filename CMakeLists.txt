@@ -23,6 +23,26 @@ option(USE_XDG "Follow XDG-Basedir specification" ON) # Enabled by default
 
 if(OPTION_AMIGAOS4_VIRTIO_GL)
   add_compile_definitions(WL_AMIGAOS4_VIRTIO_GL)
+  # Where the virtio-gl-hyper fixed-function layer lives. Compiled from there
+  # rather than copied in: five other programs run on those exact files, and a
+  # copy here would be a second thing to fix -- which is exactly what the stale
+  # VirGL encoder snapshot in this tree turned out to be.
+  set(VIRTGL_LAYER_DIR "${CMAKE_SOURCE_DIR}/../virtiogpu-build/opengw-virtio"
+      CACHE PATH "virtio-gl-hyper opengw-virtio directory")
+  set(VIRTGL_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/../virtiogpu-build/include"
+      CACHE PATH "virtio-gl-hyper include directory")
+  # Widelands' static libraries reference each other in cycles -- wui_interactive
+  # calls into ui_game_economy_options and back -- and GNU ld resolves a cycle
+  # only if it can revisit an archive. Wrapping the link line in a group is what
+  # lets it, and it is a build-time detail: no library structure changes.
+  set(CMAKE_CXX_LINK_EXECUTABLE
+      "<CMAKE_CXX_COMPILER> <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> -Wl,--start-group <LINK_LIBRARIES> -Wl,--end-group")
+
+  if(NOT EXISTS "${VIRTGL_LAYER_DIR}/virtgl_compat.cpp")
+    message(FATAL_ERROR
+      "virtio-gl-hyper layer not found at ${VIRTGL_LAYER_DIR}. "
+      "Set -DVIRTGL_LAYER_DIR=<path to opengw-virtio>.")
+  endif()
   if(OPTION_AMIGAOS4_VIRTIO_NO_SHADERS)
     add_compile_definitions(WL_AMIGAOS4_VIRTIO_NO_SHADERS)
     message(WARNING "AmigaOS4 VirtIO no-shader diagnostic mode is enabled")
