@@ -66,6 +66,42 @@ AttrKind attr_kind_of(const std::string& name) {
 	return AttrKind::kUnknown;
 }
 
+/* Which of the eight programs this is.
+ *
+ * The attribute names say what each float means, but not what the fragment
+ * shader does with it, and that differs enough between the eight that one
+ * rule cannot serve them all. A blit's blend colour, for instance, is
+ * RGBAColor(0, 0, 0, opacity): its rgb is deliberately black and the shader
+ * uses only the alpha. Modulating by it -- the obvious reading of "texture
+ * times colour" -- turns the whole screen black, which is exactly what it
+ * did.
+ *
+ * The shader source is already here, so each program can simply say which
+ * one it is, once, at link time. */
+enum class ProgramKind {
+	kUnknown,
+	kBlit,
+	kFillRect,
+	kDrawLine,
+	kGrid,
+	kWorkarea,
+	kRoad,
+	kTerrain,
+	kDither
+};
+
+ProgramKind program_kind_of(const std::string& source) {
+	if (source.find("out_program_flavor") != std::string::npos) { return ProgramKind::kBlit; }
+	if (source.find("u_dither_texture") != std::string::npos) { return ProgramKind::kDither; }
+	if (source.find("u_terrain_texture") != std::string::npos) { return ProgramKind::kTerrain; }
+	if (source.find("var_overlay") != std::string::npos) { return ProgramKind::kWorkarea; }
+	if (source.find("out_brightness") != std::string::npos) { return ProgramKind::kRoad; }
+	if (source.find("pow(cos(") != std::string::npos) { return ProgramKind::kDrawLine; }
+	if (source.find("vec4(var_color, .8)") != std::string::npos) { return ProgramKind::kGrid; }
+	if (source.find("var_color") != std::string::npos) { return ProgramKind::kFillRect; }
+	return ProgramKind::kUnknown;
+}
+
 struct ProgramState {
 	std::set<GLuint> shaders;
 	std::string log;
@@ -76,6 +112,7 @@ struct ProgramState {
 	   location means without searching the map by value. */
 	std::map<GLint, AttrKind> attribute_kind;
 	std::map<GLint, std::string> uniform_name;
+	ProgramKind kind{ProgramKind::kUnknown};
 };
 
 struct TextureState {
@@ -430,6 +467,7 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 	const AttribArray* second_texture = nullptr;
 	const AttribArray* brightness = nullptr;
 	const AttribArray* colour = nullptr;
+	const AttribArray* flavour = nullptr;
 	for (unsigned i = 0; i < kMaxAttribs; ++i) {
 		if (!attribs[i].enabled) {
 			continue;
@@ -448,6 +486,7 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 		case AttrKind::kColor:
 		case AttrKind::kBlend:
 		case AttrKind::kOverlay: colour = &attribs[i]; break;
+		case AttrKind::kProgramFlavor: flavour = &attribs[i]; break;
 		default: break;
 		}
 	}
@@ -493,7 +532,11 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 	   to unit 1, and leaving that unit enabled would modulate the result with
 	   a texture that is not there. */
 	const bool want_unit0 = texture_position != nullptr && bound_textures[0] != 0;
-	const bool want_unit1 = second_texture != nullptr && bound_textures[1] != 0;
+	/* Unit 1 stays off. Both shaders that bind a second texture read it as
+	   something other than a colour to multiply by -- blit takes a player
+	   colour mask from it, dither an alpha -- so modulating with it would be
+	   wrong in a way that a missing second texture is not. */
+	const bool want_unit1 = false;
 	wlgl_glActiveTextureARB(GL_TEXTURE1);
 	if (want_unit1) {
 		wlgl_glEnable(GL_TEXTURE_2D);
@@ -511,12 +554,64 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 	for (GLsizei index = 0; index < count; ++index) {
 		const GLsizei vertex = first + index;
 
+		/* What the fragment shader would have produced, expressed as the
+		   vertex colour a GL_MODULATE unit needs to produce the same thing. */
 		float rgba[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-		if (colour != nullptr) {
-			read_attrib(*colour, vertex, rgba, 4);
-			if (colour->size < 4) {
-				rgba[3] = 1.0f;
+		switch (program.kind) {
+		case ProgramKind::kBlit: {
+			/* vec4(texture.rgb, blend.a * texture.a) for the plain flavour:
+			   the blend colour carries opacity and nothing else. Modulating
+			   by its rgb -- which Widelands sets to black on purpose -- is
+			   what made every blit come out black. */
+			float blend[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+			if (colour != nullptr) {
+				read_attrib(*colour, vertex, blend, 4);
 			}
+			float which = 0.0f;
+			if (flavour != nullptr) {
+				read_attrib(*flavour, vertex, &which, 1);
+			}
+			if (which > 0.5f && which < 1.5f) {
+				/* Monochrome: luminance(texture) * blend.rgb. The luminance is
+				   per fragment and out of reach here, so the tint is applied to
+				   the texture instead -- the right colour, not yet grey. */
+				rgba[0] = blend[0];
+				rgba[1] = blend[1];
+				rgba[2] = blend[2];
+			}
+			/* Flavour 2 mixes in a player colour through a mask, which is also
+			   per fragment. Drawn as the plain flavour until the layer can do
+			   it: the image is right, the player colour is missing. */
+			rgba[3] = blend[3];
+		} break;
+
+		case ProgramKind::kGrid:
+			/* vec4(var_color, .8) -- the alpha is a constant in the shader,
+			   and the attribute only has three components. */
+			if (colour != nullptr) {
+				read_attrib(*colour, vertex, rgba, 3);
+			}
+			rgba[3] = 0.8f;
+			break;
+
+		case ProgramKind::kDrawLine:
+			/* The alpha attribute is a distance across the line, shaped by
+			   pow(cos(a * PI/2), 1.5) into the soft edge. Per vertex is exact
+			   here: it is a function of the attribute, not of the fragment. */
+			if (colour != nullptr) {
+				read_attrib(*colour, vertex, rgba, 4);
+				rgba[3] = std::pow(std::cos(rgba[3] * 3.14159265f / 2.0f), 1.5f);
+			}
+			break;
+
+		default:
+			if (colour != nullptr) {
+				read_attrib(*colour, vertex, rgba, 4);
+				if (colour->size < 4) {
+					rgba[3] = 1.0f;
+				}
+			}
+			break;
 		}
 		if (brightness != nullptr) {
 			float value = 1.0f;
@@ -790,6 +885,18 @@ void glLinkProgram(GLuint program) {
 		                       shaders[shader].compiled;
 	}
 	found->second.log = found->second.linked ? "" : "Program has an uncompiled shader";
+	if (found->second.linked) {
+		/* Only the fragment shader distinguishes them: all eight vertex
+		   shaders do little more than pass their attributes through. */
+		for (const GLuint shader : found->second.shaders) {
+			if (shaders[shader].type != GL_FRAGMENT_SHADER) {
+				continue;
+			}
+			found->second.kind = program_kind_of(shaders[shader].source);
+			log_info("VirtIO GL: program %u is kind %d", program,
+			         static_cast<int>(found->second.kind));
+		}
+	}
 }
 
 void glReadPixels(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void*) {
