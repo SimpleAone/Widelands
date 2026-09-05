@@ -159,7 +159,12 @@ bool present() {
 	   a time -- a single log_info of the whole thing is what a 512-byte
 	   buffer silently truncated last time, taking the geometry counts with
 	   it. */
-	if (frames == 1 || frames == 2) {
+	/* Not frame 1: the backend pipelines, so present() collects the previous
+	   frame and submits this one. Asked that early, every counter still
+	   describes the empty frame the window was opened with -- which is how
+	   "drawn=0" was read as "nothing was ever drawn". Frames 3 and 5 have a
+	   completed frame behind them, and the 300s land in the main menu. */
+	if (frames == 3 || frames == 5 || (frames % 300) == 0) {
 		char status[8192];
 		const unsigned written = virtioBackendStatus(status, sizeof(status));
 		if (written != 0u) {
