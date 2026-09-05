@@ -473,9 +473,17 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 	}
 
 	static unsigned draws = 0;
-	if (draws < 4) {
-		log_info("VirtIO GL: draw %u, %d vertices, program %u", draws, count,
-		         current_program);
+	if (draws < 6) {
+		/* Which attributes were recognised, so a draw that produces nothing
+		   visible can be told from one that was never given a texture
+		   coordinate or a colour in the first place. */
+		log_info("VirtIO GL: draw %u, %d vertices, program %u, tex=%d off=%d tex2=%d "
+		         "bright=%d colour=%d z=%.3f dim=%.3f,%.3f",
+		         draws, count, current_program, static_cast<int>(texture_position != nullptr),
+		         static_cast<int>(texture_offset != nullptr),
+		         static_cast<int>(second_texture != nullptr),
+		         static_cast<int>(brightness != nullptr), static_cast<int>(colour != nullptr),
+		         uniform_z_value, uniform_texture_dimensions[0], uniform_texture_dimensions[1]);
 	}
 	++draws;
 	wlgl_glBegin(mode == GL_LINES ? GL_LINES : GL_TRIANGLES);
@@ -596,7 +604,11 @@ GLint glGetAttribLocation(GLuint program, const GLchar* name) {
 	}
 	const GLint location = static_cast<GLint>(locations.size());
 	locations.emplace(name, location);
-	programs[program].uniform_name.emplace(location, name);
+	/* This is the whole translation: the location Widelands is about to bind
+	   its vertex array to, recorded against what the attribute means. Without
+	   it a draw has an array of floats and no idea which of them is a
+	   position, and glDrawArrays turns every one of them away. */
+	programs[program].attribute_kind.emplace(location, attr_kind_of(name));
 	return location;
 }
 
@@ -722,6 +734,12 @@ GLint glGetUniformLocation(GLuint program, const GLchar* name) {
 	}
 	const GLint location = static_cast<GLint>(locations.size());
 	locations.emplace(name, location);
+	/* glUniform1f and glUniform2f look a location back up here to recognise
+	   u_z_value and u_texture_dimensions. The name was being recorded by
+	   glGetAttribLocation instead -- a different, overlapping numbering -- so
+	   the two uniforms that matter were never seen and every vertex got the
+	   default z and an unscaled atlas coordinate. */
+	programs[program].uniform_name.emplace(location, name);
 	return location;
 }
 
