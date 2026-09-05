@@ -589,6 +589,15 @@ WLApplication::WLApplication(int const argc, char const* const* const argv)
 	#endif
 	g_gr->refresh();
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
+	/* The VirtIO backend pipelines: a present hands over the current frame
+	   and collects the previous one, so a single refresh leaves the splash
+	   one frame behind and the window still holds what it was opened with.
+	   In the main menu that is invisible -- the next frame is 100ms away --
+	   but here the next one is on the far side of the texture atlas, so the
+	   window would stay blank for a minute and a half. Drawing it twice
+	   costs one frame and puts it on screen now. */
+	draw_splashscreen(*r, _("Loading…"), 1.0f);
+	g_gr->refresh();
 	log_info("AMIGA STARTUP CHECKPOINT: after splash refresh, before rebuild_texture_atlas");
 	#endif
 	verb_log_info("Splash screen shown");

@@ -164,7 +164,7 @@ bool present() {
 	   describes the empty frame the window was opened with -- which is how
 	   "drawn=0" was read as "nothing was ever drawn". Frames 3 and 5 have a
 	   completed frame behind them, and the 300s land in the main menu. */
-	if (frames == 3 || frames == 5 || (frames % 300) == 0) {
+	if (frames == 3 || frames == 5 || (frames != 0 && (frames % 300) == 0)) {
 		char status[8192];
 		const unsigned written = virtioBackendStatus(status, sizeof(status));
 		if (written != 0u) {
