@@ -152,6 +152,24 @@ static void segfault_handler(const int sig) {
 }
 #endif
 
+#ifdef __amigaos4__
+/* The stack this program's main thread gets.
+ *
+ * Without it Widelands runs on whatever the shell hands out, and that is not
+ * enough for two things happening on the same thread. Its own call stacks are
+ * deep -- nested UI panels, the richtext layouter -- and underneath them
+ * virtio_gpu.library builds frames of its own: probe_control_queue0() alone
+ * claims 35KB in a single stwux, and virtioBackendCreateFrameTarget() has
+ * been seen at 195KB. A session rebuild happens inside present(), so those
+ * land on top of the deepest part of the UI stack rather than beside it.
+ *
+ * The result is a DSI on a guard page, which reads as a wild pointer in the
+ * driver and is nothing of the kind. newlib reads this symbol at startup. */
+extern "C" {
+unsigned long __stack_size = 2UL * 1024UL * 1024UL;
+}
+#endif
+
 /**
  * Cross-platform entry point for SDL applications.
  */
