@@ -21,6 +21,7 @@
 
 #ifdef WL_AMIGAOS4_VIRTIO_GL
 
+#include <cstdlib>
 #include <string>
 
 #include <SDL_video.h>
@@ -54,6 +55,24 @@ bool initialize_driver() {
 	if (driver_open) {
 		return true;
 	}
+	/* Wait for the worker instead of dropping the frame.
+	 *
+	 * The backend does not pace by default: if the worker is still busy when
+	 * present() is called, the frame is discarded and present() returns true
+	 * anyway. That is the right trade for the engines it was tuned on --
+	 * frames arrive continuously there, a dropped one is invisible, and the
+	 * wait sits on the thread that reads the keyboard.
+	 *
+	 * Widelands is the opposite. It presents three times for the splash
+	 * screen and then not again until the texture atlas is built, a minute
+	 * and a half later. Every dropped frame is a frame nobody ever sees, and
+	 * the log says "present -> ok" for all of them -- which is why a
+	 * correctly rendered splash screen sat in the pipeline while the window
+	 * stayed black, and why turning on debug logging (ten times slower, so
+	 * the worker was always ready) appeared to fix the rendering.
+	 *
+	 * Set rather than forced: an explicit setting in the environment wins. */
+	setenv("VIRTIOGL_PACING", "1", 0);
 	if (!virtioBackendOpen()) {
 		fail("cannot open PROGDIR:virtio_gpu.library or LIBS:virtio_gpu.library version 2");
 		return false;
