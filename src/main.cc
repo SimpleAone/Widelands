@@ -168,6 +168,12 @@ static void segfault_handler(const int sig) {
 extern "C" {
 unsigned long __stack_size = 2UL * 1024UL * 1024UL;
 }
+/* And the same size again as a stack cookie, because __stack_size alone did
+   not take: the crash came back unchanged, with only 37KB below the stack
+   pointer. A shell reads this string out of the binary and starts the
+   process with it; __stack_size is what newlib applies, and which of the
+   two is consulted depends on how the program was launched. */
+static const char* const kStackCookie __attribute__((used)) = "$STACK:2097152";
 #endif
 
 /**
