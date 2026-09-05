@@ -121,6 +121,7 @@
 #define gluPerspective wlgl_gluPerspective
 #define virtglEndFrameCapture wlgl_virtglEndFrameCapture
 #define virtglPrepareGlowPresent wlgl_virtglPrepareGlowPresent
+#define virtglSetRenderTarget wlgl_virtglSetRenderTarget
 #define virtglPreparePresent wlgl_virtglPreparePresent
 
 #endif  /* WL_GRAPHIC_VIRTIO_VIRTGL_RENAME_H */

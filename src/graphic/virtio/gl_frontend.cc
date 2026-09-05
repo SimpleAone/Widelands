@@ -252,6 +252,22 @@ void glBindFramebuffer(GLenum target, GLuint framebuffer) {
 		return;
 	}
 	bound_framebuffer = framebuffer;
+	/* Tell the layer where the next draws go. Until now this was recorded
+	   and nothing else: the draws went to the screen, were painted over by
+	   the rest of the frame, and the texture kept whatever it already held.
+	   That is the white rectangle where a map preview belongs. */
+	if (framebuffer == 0) {
+		wlgl_virtglSetRenderTarget(0, 0, 0);
+	} else {
+		const GLuint texture = framebuffers[framebuffer].colour_texture;
+		const auto found = textures.find(texture);
+		if (found == textures.end()) {
+			wlgl_virtglSetRenderTarget(0, 0, 0);
+		} else {
+			wlgl_virtglSetRenderTarget(texture, static_cast<unsigned>(found->second.width),
+			                           static_cast<unsigned>(found->second.height));
+		}
+	}
 }
 
 void glBindTexture(GLenum target, GLuint texture) {

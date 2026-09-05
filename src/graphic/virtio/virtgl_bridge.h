@@ -69,6 +69,11 @@ void wlgl_glDepthMask(GLboolean flag);
 void wlgl_glDepthFunc(GLenum func);
 void wlgl_glTexEnvf(GLenum target, GLenum name, GLfloat value);
 
+/* Render into a texture instead of the screen -- what an FBO comes to for a
+   client that attaches a single colour texture, which is what Widelands
+   does for map previews and minimaps. Texture 0 returns to the screen. */
+void wlgl_virtglSetRenderTarget(unsigned texture, unsigned width, unsigned height);
+
 /* The frame boundary, in the order every port performs it. */
 void wlgl_virtglPreparePresent(void);
 void wlgl_virtglEndFrameCapture(void);
