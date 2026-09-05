@@ -486,6 +486,27 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 		         uniform_z_value, uniform_texture_dimensions[0], uniform_texture_dimensions[1]);
 	}
 	++draws;
+	/* Widelands drives a programmable pipeline, so it never enables
+	   GL_TEXTURE_2D -- a shader samples whatever it is given. The fixed
+	   function layer below only samples an enabled unit, so the draw has to
+	   say so itself, and say it per draw: a blit with no mask binds nothing
+	   to unit 1, and leaving that unit enabled would modulate the result with
+	   a texture that is not there. */
+	const bool want_unit0 = texture_position != nullptr && bound_textures[0] != 0;
+	const bool want_unit1 = second_texture != nullptr && bound_textures[1] != 0;
+	wlgl_glActiveTextureARB(GL_TEXTURE1);
+	if (want_unit1) {
+		wlgl_glEnable(GL_TEXTURE_2D);
+	} else {
+		wlgl_glDisable(GL_TEXTURE_2D);
+	}
+	wlgl_glActiveTextureARB(GL_TEXTURE0);
+	if (want_unit0) {
+		wlgl_glEnable(GL_TEXTURE_2D);
+	} else {
+		wlgl_glDisable(GL_TEXTURE_2D);
+	}
+
 	wlgl_glBegin(mode == GL_LINES ? GL_LINES : GL_TRIANGLES);
 	for (GLsizei index = 0; index < count; ++index) {
 		const GLsizei vertex = first + index;
@@ -509,6 +530,7 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 		}
 		wlgl_glColor4f(rgba[0], rgba[1], rgba[2], rgba[3]);
 
+		float uv_logged[2] = {0.0f, 0.0f};
 		if (texture_position != nullptr) {
 			float uv[2] = {0.0f, 0.0f};
 			read_attrib(*texture_position, vertex, uv, 2);
@@ -528,6 +550,8 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 				}
 			}
 			wlgl_glTexCoord2f(uv[0], uv[1]);
+			uv_logged[0] = uv[0];
+			uv_logged[1] = uv[1];
 		}
 		if (second_texture != nullptr) {
 			float uv[2] = {0.0f, 0.0f};
@@ -539,6 +563,17 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 		read_attrib(*position, vertex, xyz, 3);
 		if (position->size < 3) {
 			xyz[2] = uniform_z_value;
+		}
+		/* The first corners of the first few draws, because a draw that
+		   reports the right attributes can still be reading the wrong bytes:
+		   a wrong stride or offset produces coordinates far outside the
+		   clip cube and nothing on screen, and looks identical from here. */
+		if (draws < 3 && index < 3) {
+			log_info("VirtIO GL:   v%d xyz %.3f %.3f %.3f  uv %.3f %.3f  rgba %.2f %.2f %.2f %.2f",
+			         static_cast<int>(index), xyz[0], xyz[1], xyz[2],
+			         texture_position != nullptr ? uv_logged[0] : 0.0f,
+			         texture_position != nullptr ? uv_logged[1] : 0.0f, rgba[0], rgba[1], rgba[2],
+			         rgba[3]);
 		}
 		wlgl_glVertex3f(xyz[0], xyz[1], xyz[2]);
 	}
