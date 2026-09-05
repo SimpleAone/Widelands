@@ -107,6 +107,22 @@ uint32_t NoteThreadSafeFunction::next_id_(0);
 void NoteThreadSafeFunction::instantiate(const std::function<void()>& fn,
                                          const bool wait_until_completion,
                                          const bool rethrow_errors) {
+#ifdef __amigaos4__
+	/* This port runs single-threaded: there is no logic worker, and the
+	 * std::thread identity comparison below is not reliable with GCC's native
+	 * thread backend on newlib. When it answered wrongly the caller published a
+	 * note and waited for a thread that was itself -- the game stopped at its
+	 * first cached image, black window, sound still playing, log ending
+	 * mid-sentence.
+	 *
+	 * font_handler.cc had already worked around this at one call site. There
+	 * are twenty more, so the answer belongs here: run it inline, which is
+	 * exactly what the initializer-thread branch below does. */
+	(void)wait_until_completion;
+	(void)rethrow_errors;
+	fn();
+	return;
+#else
 	if (initializer_thread == kNoThread) {
 		throw wexception("NoteThreadSafeFunction::instantiate: initializer thread was not set yet");
 	}
@@ -159,6 +175,7 @@ void NoteThreadSafeFunction::instantiate(const std::function<void()>& fn,
 			Notifications::publish(NoteThreadSafeFunction(fn));
 		}
 	}
+#endif
 }
 
 MutexLock::ID MutexLock::last_custom_mutex_ = MutexLock::ID::kLastID;

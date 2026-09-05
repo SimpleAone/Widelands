@@ -273,13 +273,16 @@ void glCompileShader(GLuint shader) {
 		set_error(GL_INVALID_VALUE);
 		return;
 	}
-#ifdef WL_AMIGAOS4_VIRTIO_NO_SHADERS
+	/* The source is accepted and then ignored, and that is not a stub.
+	 *
+	 * Nothing below this reads a shader: glDrawArrays walks the vertex array the
+	 * program uploaded and identifies what each attribute means from its name,
+	 * because Widelands' eight fragment shaders come down to texture times
+	 * colour -- which the fixed-function layer does natively. Failing the
+	 * compile is what stopped the game at the dither mask, since RenderQueue
+	 * builds all eight programs before anything is drawn. */
 	found->second.compiled = !found->second.source.empty();
 	found->second.log = found->second.compiled ? "" : "No shader source was supplied";
-#else
-	found->second.compiled = false;
-	found->second.log = "AmigaOS4 VirtIO: GLSL-to-VirGL translation is not implemented yet";
-#endif
 }
 
 GLuint glCreateProgram(void) {
@@ -688,17 +691,12 @@ void glLinkProgram(GLuint program) {
 		set_error(GL_INVALID_VALUE);
 		return;
 	}
-#ifdef WL_AMIGAOS4_VIRTIO_NO_SHADERS
 	found->second.linked = !found->second.shaders.empty();
 	for (const GLuint shader : found->second.shaders) {
 		found->second.linked = found->second.linked && shaders.count(shader) != 0 &&
 		                       shaders[shader].compiled;
 	}
-	found->second.log = found->second.linked ? "" : "Dummy program has an uncompiled shader";
-#else
-	found->second.linked = false;
-	found->second.log = "AmigaOS4 VirtIO: shader program translation is not implemented yet";
-#endif
+	found->second.log = found->second.linked ? "" : "Program has an uncompiled shader";
 }
 
 void glReadPixels(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void*) {
