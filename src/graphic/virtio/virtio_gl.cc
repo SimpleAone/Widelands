@@ -73,6 +73,12 @@ bool initialize_driver() {
 	 *
 	 * Set rather than forced: an explicit setting in the environment wins. */
 	setenv("VIRTIOGL_PACING", "1", 0);
+	/* The backend's log defaults to TyrQuake's file, so every Widelands run
+	   so far has been writing its worker stalls into another game's log --
+	   and this happens with debug logging off too, since the calls that
+	   report a stalled worker or a lost frame target always write. A string
+	   literal because the backend keeps the pointer. */
+	virtioBackendSetLogFile("PROGDIR:widelands-virtgl.log");
 	if (!virtioBackendOpen()) {
 		fail("cannot open PROGDIR:virtio_gpu.library or LIBS:virtio_gpu.library version 2");
 		return false;

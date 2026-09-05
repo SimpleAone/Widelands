@@ -96,6 +96,11 @@ struct Window* virtioWindowFromSDL(SDL_Window* window);
    such key, and without it a frame that vanishes inside the backend is
    indistinguishable from one that was never submitted. */
 unsigned virtioBackendStatus(char* out, unsigned size);
+
+/* Where the backend writes its own log. The default is TyrQuake's file,
+   which is where every Widelands run has been reporting its worker stalls.
+   The path is kept as a pointer, so it must outlive the call. */
+void virtioBackendSetLogFile(const char* path);
 }  // extern "C"
 
 #endif  // WL_GRAPHIC_VIRTIO_VIRTGL_BRIDGE_H
