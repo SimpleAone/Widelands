@@ -538,17 +538,37 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 	   colour mask from it, dither an alpha -- so modulating with it would be
 	   wrong in a way that a missing second texture is not. */
 	const bool want_unit1 = false;
-	wlgl_glActiveTextureARB(GL_TEXTURE1);
-	if (want_unit1) {
-		wlgl_glEnable(GL_TEXTURE_2D);
-	} else {
+	/* Only when it changes. This used to issue four calls per draw whether or
+	   not anything differed -- around 1750 per frame on a screen of 438
+	   batches -- and state the layer has to act on is state that can stop two
+	   batches merging. The layer keeps this per unit and nothing else here
+	   touches GL_TEXTURE_2D (Widelands drives a programmable pipeline and
+	   never enables it), so remembering what was set is enough. */
+	static bool unit_enabled[2] = {false, false};
+	static bool unit_state_known = false;
+	if (!unit_state_known) {
+		/* Unit 1 goes off once and stays off: both shaders that bind a
+		   second texture read it as something other than a colour to
+		   multiply by. */
+		unit_state_known = true;
+		wlgl_glActiveTextureARB(GL_TEXTURE1);
 		wlgl_glDisable(GL_TEXTURE_2D);
+		unit_enabled[1] = false;
+		wlgl_glActiveTextureARB(GL_TEXTURE0);
+		active_texture_unit = 0;
 	}
-	wlgl_glActiveTextureARB(GL_TEXTURE0);
-	if (want_unit0) {
-		wlgl_glEnable(GL_TEXTURE_2D);
-	} else {
-		wlgl_glDisable(GL_TEXTURE_2D);
+	static_cast<void>(want_unit1);
+	if (unit_enabled[0] != want_unit0) {
+		if (active_texture_unit != 0) {
+			wlgl_glActiveTextureARB(GL_TEXTURE0);
+			active_texture_unit = 0;
+		}
+		if (want_unit0) {
+			wlgl_glEnable(GL_TEXTURE_2D);
+		} else {
+			wlgl_glDisable(GL_TEXTURE_2D);
+		}
+		unit_enabled[0] = want_unit0;
 	}
 
 	wlgl_glBegin(mode == GL_LINES ? GL_LINES : GL_TRIANGLES);
