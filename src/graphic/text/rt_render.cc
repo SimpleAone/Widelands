@@ -1147,7 +1147,7 @@ void TagHandler::make_text_nodes(const std::string& txt,
                                  std::vector<RenderNode*>& nodes,
                                  NodeStyle& ns) {
 #ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA TEXT NODES CHECKPOINT: entered bytes=%u nodes=%u",
+	log_checkpoint("AMIGA TEXT NODES CHECKPOINT: entered bytes=%u nodes=%u",
 	         static_cast<unsigned>(txt.size()), static_cast<unsigned>(nodes.size()));
 #endif
 	TextStream ts(txt);
@@ -1209,7 +1209,7 @@ void TagHandler::make_text_nodes(const std::string& txt,
 
 	} else {  // LTR
 #ifdef WL_AMIGAOS4_VIRTIO_GL
-		log_info("AMIGA TEXT NODES CHECKPOINT: LTR loop start");
+		log_checkpoint("AMIGA TEXT NODES CHECKPOINT: LTR loop start");
 #endif
 		while (ts.pos() < txt.size()) {
 			std::size_t cpos = ts.pos();
@@ -1219,12 +1219,12 @@ void TagHandler::make_text_nodes(const std::string& txt,
 			}
 			word = ts.till_any_or_end(" \t\n\r");
 #ifdef WL_AMIGAOS4_VIRTIO_GL
-			log_info("AMIGA TEXT NODES CHECKPOINT: word parsed bytes=%u before fontset",
+			log_checkpoint("AMIGA TEXT NODES CHECKPOINT: word parsed bytes=%u before fontset",
 			         static_cast<unsigned>(word.size()));
 #endif
 			ns.fontset = i18n::find_fontset(word.c_str(), *fontsets_);
 #ifdef WL_AMIGAOS4_VIRTIO_GL
-			log_info("AMIGA TEXT NODES CHECKPOINT: fontset ready");
+			log_checkpoint("AMIGA TEXT NODES CHECKPOINT: fontset ready");
 #endif
 			if (!word.empty()) {
 				replace_entities(&word);
@@ -1241,50 +1241,50 @@ void TagHandler::make_text_nodes(const std::string& txt,
 		}
 	}
 #ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA TEXT NODES CHECKPOINT: complete nodes=%u", static_cast<unsigned>(nodes.size()));
+	log_checkpoint("AMIGA TEXT NODES CHECKPOINT: complete nodes=%u", static_cast<unsigned>(nodes.size()));
 #endif
 }
 
 void TagHandler::emit_nodes(std::vector<RenderNode*>& nodes) {
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA TAG EMIT CHECKPOINT: entered tag='%s' children=%u nodes=%u", tag_.name().c_str(),
+	log_checkpoint("AMIGA TAG EMIT CHECKPOINT: entered tag='%s' children=%u nodes=%u", tag_.name().c_str(),
 	         static_cast<unsigned>(tag_.children().size()), static_cast<unsigned>(nodes.size()));
 	#endif
 	unsigned child_index = 0;
 	for (Child* c : tag_.children()) {
 		#ifdef WL_AMIGAOS4_VIRTIO_GL
-		log_info("AMIGA TAG EMIT CHECKPOINT: child=%u kind=%s", child_index,
+		log_checkpoint("AMIGA TAG EMIT CHECKPOINT: child=%u kind=%s", child_index,
 		         c->tag != nullptr ? c->tag->name().c_str() : "text");
 		#endif
 		if (c->tag != nullptr) {
 			#ifdef WL_AMIGAOS4_VIRTIO_GL
-			log_info("AMIGA TAG EMIT CHECKPOINT: child=%u before create handler", child_index);
+			log_checkpoint("AMIGA TAG EMIT CHECKPOINT: child=%u before create handler", child_index);
 			#endif
 			child_taghandlers_.emplace_back(create_taghandler(
 			   this, *c->tag, font_cache_, nodestyle_, image_cache_, renderer_style_, fontsets_));
 			#ifdef WL_AMIGAOS4_VIRTIO_GL
-			log_info("AMIGA TAG EMIT CHECKPOINT: child=%u before enter", child_index);
+			log_checkpoint("AMIGA TAG EMIT CHECKPOINT: child=%u before enter", child_index);
 			#endif
 			child_taghandlers_.back()->enter();
 			#ifdef WL_AMIGAOS4_VIRTIO_GL
-			log_info("AMIGA TAG EMIT CHECKPOINT: child=%u before emit", child_index);
+			log_checkpoint("AMIGA TAG EMIT CHECKPOINT: child=%u before emit", child_index);
 			#endif
 			child_taghandlers_.back()->emit_nodes(nodes);
 		} else {
 			#ifdef WL_AMIGAOS4_VIRTIO_GL
-			log_info("AMIGA TAG EMIT CHECKPOINT: child=%u before text nodes bytes=%u", child_index,
+			log_checkpoint("AMIGA TAG EMIT CHECKPOINT: child=%u before text nodes bytes=%u", child_index,
 			         static_cast<unsigned>(c->text.size()));
 			#endif
 			make_text_nodes(c->text, nodes, nodestyle_);
 		}
 		#ifdef WL_AMIGAOS4_VIRTIO_GL
-		log_info("AMIGA TAG EMIT CHECKPOINT: child=%u complete nodes=%u", child_index,
+		log_checkpoint("AMIGA TAG EMIT CHECKPOINT: child=%u complete nodes=%u", child_index,
 		         static_cast<unsigned>(nodes.size()));
 		#endif
 		++child_index;
 	}
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA TAG EMIT CHECKPOINT: complete tag='%s' nodes=%u", tag_.name().c_str(),
+	log_checkpoint("AMIGA TAG EMIT CHECKPOINT: complete tag='%s' nodes=%u", tag_.name().c_str(),
 	         static_cast<unsigned>(nodes.size()));
 	#endif
 }
@@ -1667,17 +1667,17 @@ public:
 	 */
 	void enter() override {
 		#ifdef WL_AMIGAOS4_VIRTIO_GL
-		log_info("AMIGA DIV ENTER CHECKPOINT: entered");
+		log_checkpoint("AMIGA DIV ENTER CHECKPOINT: entered");
 		#endif
 		Borders padding;
 		Borders margin;
 
 		#ifdef WL_AMIGAOS4_VIRTIO_GL
-		log_info("AMIGA DIV ENTER CHECKPOINT: before unique attributes");
+		log_checkpoint("AMIGA DIV ENTER CHECKPOINT: before unique attributes");
 		#endif
 		handle_unique_attributes();
 		#ifdef WL_AMIGAOS4_VIRTIO_GL
-		log_info("AMIGA DIV ENTER CHECKPOINT: after unique attributes, before attrs");
+		log_checkpoint("AMIGA DIV ENTER CHECKPOINT: after unique attributes, before attrs");
 		#endif
 		const AttrMap& a = tag_.attrs();
 		if (a.has("background")) {
@@ -1713,7 +1713,7 @@ public:
 			margin.left = margin.top = margin.right = margin.bottom = p;
 		}
 		#ifdef WL_AMIGAOS4_VIRTIO_GL
-		log_info("AMIGA DIV ENTER CHECKPOINT: attributes complete, before child emit");
+		log_checkpoint("AMIGA DIV ENTER CHECKPOINT: attributes complete, before child emit");
 		#endif
 
 		std::vector<RenderNode*> subnodes;
@@ -1727,7 +1727,7 @@ public:
 		}
 		TagHandler::emit_nodes(subnodes);
 		#ifdef WL_AMIGAOS4_VIRTIO_GL
-		log_info("AMIGA DIV ENTER CHECKPOINT: child emit complete count=%u",
+		log_checkpoint("AMIGA DIV ENTER CHECKPOINT: child emit complete count=%u",
 		         static_cast<unsigned>(subnodes.size()));
 		#endif
 		renderer_style_.overall_width = old_line_width;
@@ -1781,12 +1781,12 @@ public:
 		// Layout takes ownership of subnodes
 		Layout layout(subnodes);
 		#ifdef WL_AMIGAOS4_VIRTIO_GL
-		log_info("AMIGA DIV ENTER CHECKPOINT: layout object ready, before fit_nodes");
+		log_checkpoint("AMIGA DIV ENTER CHECKPOINT: layout object ready, before fit_nodes");
 		#endif
 		std::vector<RenderNode*> nodes_to_render;
 		uint16_t max_line_width = layout.fit_nodes(&nodes_to_render, w_, padding, trim_spaces_);
 		#ifdef WL_AMIGAOS4_VIRTIO_GL
-		log_info("AMIGA DIV ENTER CHECKPOINT: after fit_nodes");
+		log_checkpoint("AMIGA DIV ENTER CHECKPOINT: after fit_nodes");
 		#endif
 		uint16_t extra_width = 0;
 		if (w_ < INFINITE_WIDTH && w_ > max_line_width) {
@@ -1826,7 +1826,7 @@ public:
 		render_node_->set_dimensions(w_, layout.height(), margin);
 		render_node_->set_nodes_to_render(nodes_to_render);
 		#ifdef WL_AMIGAOS4_VIRTIO_GL
-		log_info("AMIGA DIV ENTER CHECKPOINT: complete");
+		log_checkpoint("AMIGA DIV ENTER CHECKPOINT: complete");
 		#endif
 	}
 	void emit_nodes(std::vector<RenderNode*>& nodes) override {
@@ -1907,20 +1907,20 @@ public:
 	// Handle attributes that are in rt, but not in div.
 	void handle_unique_attributes() override {
 		#ifdef WL_AMIGAOS4_VIRTIO_GL
-		log_info("AMIGA RT UNIQUE CHECKPOINT: entered, before attrs");
+		log_checkpoint("AMIGA RT UNIQUE CHECKPOINT: entered, before attrs");
 		#endif
 		const AttrMap& a = tag_.attrs();
 		#ifdef WL_AMIGAOS4_VIRTIO_GL
-		log_info("AMIGA RT UNIQUE CHECKPOINT: attrs ready, before show_spaces");
+		log_checkpoint("AMIGA RT UNIQUE CHECKPOINT: attrs ready, before show_spaces");
 		#endif
 		WordSpacerNode::show_spaces(a.has("db_show_spaces") ? a["db_show_spaces"].get_bool() : false);
 		#ifdef WL_AMIGAOS4_VIRTIO_GL
-		log_info("AMIGA RT UNIQUE CHECKPOINT: after show_spaces");
+		log_checkpoint("AMIGA RT UNIQUE CHECKPOINT: after show_spaces");
 		#endif
 		trim_spaces_ = (a.has("keep_spaces") ? !a["keep_spaces"].get_bool() : true);
 		shrink_to_fit_ = shrink_to_fit_ && trim_spaces_;
 		#ifdef WL_AMIGAOS4_VIRTIO_GL
-		log_info("AMIGA RT UNIQUE CHECKPOINT: complete");
+		log_checkpoint("AMIGA RT UNIQUE CHECKPOINT: complete");
 		#endif
 	}
 };
@@ -1990,11 +1990,11 @@ Renderer::~Renderer() {  // NOLINT
 std::pair<RenderNode*, TagHandler*>
 Renderer::layout(const std::string& text, uint16_t width, bool is_rtl, const TagSet& allowed_tags) {
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA RT LAYOUT CHECKPOINT: entered, before parser");
+	log_checkpoint("AMIGA RT LAYOUT CHECKPOINT: entered, before parser");
 	#endif
 	std::unique_ptr<Tag> rt(parser_->parse(text, allowed_tags));
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA RT LAYOUT CHECKPOINT: after parser");
+	log_checkpoint("AMIGA RT LAYOUT CHECKPOINT: after parser");
 	#endif
 
 	if (width == 0u) {
@@ -2005,11 +2005,11 @@ Renderer::layout(const std::string& text, uint16_t width, bool is_rtl, const Tag
 	renderer_style_.overall_width = width;
 
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA RT LAYOUT CHECKPOINT: width ready, before locale/fontset");
+	log_checkpoint("AMIGA RT LAYOUT CHECKPOINT: width ready, before locale/fontset");
 	#endif
 	UI::FontSet const* fontset = fontsets_->get_fontset(i18n::get_locale());
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA RT LAYOUT CHECKPOINT: fontset ready, before default style");
+	log_checkpoint("AMIGA RT LAYOUT CHECKPOINT: fontset ready, before default style");
 	#endif
 
 	NodeStyle default_style = {fontset,
@@ -2023,22 +2023,22 @@ Renderer::layout(const std::string& text, uint16_t width, bool is_rtl, const Tag
 	                           is_rtl,
 	                           ""};
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA RT LAYOUT CHECKPOINT: default style ready, before RTTagHandler");
+	log_checkpoint("AMIGA RT LAYOUT CHECKPOINT: default style ready, before RTTagHandler");
 	#endif
 
 	std::unique_ptr<TagHandler> rtrn(new RTTagHandler(
 	   nullptr, *rt, *font_cache_, default_style, image_cache_, renderer_style_, fontsets_, width));
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA RT LAYOUT CHECKPOINT: RTTagHandler ready, before enter");
+	log_checkpoint("AMIGA RT LAYOUT CHECKPOINT: RTTagHandler ready, before enter");
 	#endif
 	std::vector<RenderNode*> nodes;
 	rtrn->enter();
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA RT LAYOUT CHECKPOINT: after enter, before emit_nodes");
+	log_checkpoint("AMIGA RT LAYOUT CHECKPOINT: after enter, before emit_nodes");
 	#endif
 	rtrn->emit_nodes(nodes);
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA RT LAYOUT CHECKPOINT: after emit_nodes count=%u",
+	log_checkpoint("AMIGA RT LAYOUT CHECKPOINT: after emit_nodes count=%u",
 	         static_cast<unsigned>(nodes.size()));
 	#endif
 
@@ -2050,22 +2050,22 @@ Renderer::layout(const std::string& text, uint16_t width, bool is_rtl, const Tag
 std::shared_ptr<const UI::RenderedText>
 Renderer::render(const std::string& text, uint16_t width, bool is_rtl, const TagSet& allowed_tags) {
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA RT RENDER CHECKPOINT: render entered, before layout");
+	log_checkpoint("AMIGA RT RENDER CHECKPOINT: render entered, before layout");
 	#endif
 	std::pair<RenderNode*, TagHandler*> node = layout(text, width, is_rtl, allowed_tags);
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA RT RENDER CHECKPOINT: after layout, before node render");
+	log_checkpoint("AMIGA RT RENDER CHECKPOINT: after layout, before node render");
 	#endif
 	std::shared_ptr<UI::RenderedText> result(node.first->render(texture_cache_));
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA RT RENDER CHECKPOINT: after node render, before memory root");
+	log_checkpoint("AMIGA RT RENDER CHECKPOINT: after node render, before memory root");
 	#endif
 	result->set_memory_tree_root(node.second);
 	/* The famous "defect report against ISO C++11" makes it impossible for both
 	 * older and newer compilers to like any simpler version of this line.
 	 */
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA RT RENDER CHECKPOINT: render complete");
+	log_checkpoint("AMIGA RT RENDER CHECKPOINT: render complete");
 	#endif
 	return std::shared_ptr<const UI::RenderedText>(std::move(result));
 }

@@ -109,12 +109,12 @@ Texture::Texture(int w, int h) : owns_texture_(false) {
 
 Texture::Texture(SDL_Surface* surface, bool intensity) : owns_texture_(false) {
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA TEXTURE CHECKPOINT: constructor start %dx%d bpp=%u", surface->w, surface->h,
+	log_checkpoint("AMIGA TEXTURE CHECKPOINT: constructor start %dx%d bpp=%u", surface->w, surface->h,
 	         static_cast<unsigned>(surface->format->BytesPerPixel));
 	#endif
 	init(surface->w, surface->h);
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA TEXTURE CHECKPOINT: after init %dx%d texture=%u", width(), height(),
+	log_checkpoint("AMIGA TEXTURE CHECKPOINT: after init %dx%d texture=%u", width(), height(),
 	         static_cast<unsigned>(blit_data_.texture_id));
 	#endif
 
@@ -142,26 +142,26 @@ Texture::Texture(SDL_Surface* surface, bool intensity) : owns_texture_(false) {
 		assert(bpp == 4);
 	}
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA TEXTURE CHECKPOINT: before lock %dx%d bpp=%u", width(), height(),
+	log_checkpoint("AMIGA TEXTURE CHECKPOINT: before lock %dx%d bpp=%u", width(), height(),
 	         static_cast<unsigned>(bpp));
 	#endif
 
 	SDL_LockSurface(surface);
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA TEXTURE CHECKPOINT: after lock, before swap_rows %dx%d pitch=%d", width(),
+	log_checkpoint("AMIGA TEXTURE CHECKPOINT: after lock, before swap_rows %dx%d pitch=%d", width(),
 	         height(), surface->pitch);
 	#endif
 
 	Gl::swap_rows(width(), height(), surface->pitch, bpp, static_cast<uint8_t*>(surface->pixels));
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA TEXTURE CHECKPOINT: after swap_rows, before glTexImage2D %dx%d", width(),
+	log_checkpoint("AMIGA TEXTURE CHECKPOINT: after swap_rows, before glTexImage2D %dx%d", width(),
 	         height());
 	#endif
 
 	glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(intensity ? GL_INTENSITY : GL_RGBA), width(),
 	             height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA TEXTURE CHECKPOINT: after glTexImage2D %dx%d", width(), height());
+	log_checkpoint("AMIGA TEXTURE CHECKPOINT: after glTexImage2D %dx%d", width(), height());
 	#endif
 
 	SDL_UnlockSurface(surface);

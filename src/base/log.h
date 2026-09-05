@@ -46,6 +46,24 @@ void do_log(LogType, const Time& gametime, const char*, ...) PRINTF_FORMAT(3, 4)
 #define log_warn_time(time, ...) do_log(LogType::kWarning, time, __VA_ARGS__)
 #define log_err_time(time, ...) do_log(LogType::kError, time, __VA_ARGS__)
 
+/* Per-frame bring-up tracing for the AmigaOS4 port, off by default.
+ *
+ * These checkpoints found several real faults while the port had no picture
+ * at all, but they sit in the text and texture paths, which run dozens of
+ * times per frame. Left on they were 157080 log lines from the font handler
+ * alone out of 201699, a 16MB file in a few minutes of main menu -- and the
+ * log is line buffered onto a 9P share, so every one of them is a write
+ * across the host boundary. Measured against it: the GPU pipeline costs
+ * 4-9ms of a 100ms frame, so the rendering was never what was slow.
+ *
+ * Build with -DWL_AMIGAOS4_CHECKPOINTS to get them back. Startup
+ * checkpoints still use log_info: they run once and cost nothing. */
+#ifdef WL_AMIGAOS4_CHECKPOINTS
+#define log_checkpoint(...) do_log(LogType::kInfo, Time(), __VA_ARGS__)
+#else
+#define log_checkpoint(...) ((void)0)
+#endif
+
 #define log_info(...) do_log(LogType::kInfo, Time(), __VA_ARGS__)
 #define log_dbg(...) do_log(LogType::kDebug, Time(), __VA_ARGS__)
 #define log_warn(...) do_log(LogType::kWarning, Time(), __VA_ARGS__)

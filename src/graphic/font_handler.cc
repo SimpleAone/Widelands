@@ -83,16 +83,16 @@ public:
 	std::shared_ptr<const UI::RenderedText> render(const std::string& text,
 	                                               uint16_t w = 0) override {
 		#ifdef WL_AMIGAOS4_VIRTIO_GL
-		log_info("AMIGA FONT HANDLER CHECKPOINT: render entered width=%u textbytes=%u",
+		log_checkpoint("AMIGA FONT HANDLER CHECKPOINT: render entered width=%u textbytes=%u",
 		         static_cast<unsigned>(w), static_cast<unsigned>(text.size()));
 		#endif
 		const std::string hash = as_string(w) + text;
 		#ifdef WL_AMIGAOS4_VIRTIO_GL
-		log_info("AMIGA FONT HANDLER CHECKPOINT: hash ready, before cache get");
+		log_checkpoint("AMIGA FONT HANDLER CHECKPOINT: hash ready, before cache get");
 		#endif
 		std::shared_ptr<const RenderedText> rendered_text = render_cache_->get(hash);
 		#ifdef WL_AMIGAOS4_VIRTIO_GL
-		log_info("AMIGA FONT HANDLER CHECKPOINT: after cache get hit=%d",
+		log_checkpoint("AMIGA FONT HANDLER CHECKPOINT: after cache get hit=%d",
 		         rendered_text != nullptr ? 1 : 0);
 		#endif
 		if (rendered_text == nullptr) {
@@ -103,36 +103,36 @@ public:
 			// The second way would be much more performance-efficient, but this would clutter
 			// up the high-level UI code a lot with masses of NoteThreadSafeFunction.
 			#ifdef WL_AMIGAOS4_VIRTIO_GL
-			log_info("AMIGA FONT HANDLER CHECKPOINT: before thread-safe instantiate");
+			log_checkpoint("AMIGA FONT HANDLER CHECKPOINT: before thread-safe instantiate");
 			#endif
 			#ifdef __amigaos4__
 			// The AmigaOS diagnostic build deliberately has no logic worker. Avoid
 			// std::thread identity checks in NoteThreadSafeFunction; GCC's native
 			// thread backend is not safe for this newlib-only port yet.
-			log_info("AMIGA FONT HANDLER CHECKPOINT: direct single-thread render entered");
+			log_checkpoint("AMIGA FONT HANDLER CHECKPOINT: direct single-thread render entered");
 			render_cache_->insert(hash, rt_renderer_->render(text, w, fontset()->is_rtl()));
-			log_info("AMIGA FONT HANDLER CHECKPOINT: direct single-thread render complete");
+			log_checkpoint("AMIGA FONT HANDLER CHECKPOINT: direct single-thread render complete");
 			#else
 			NoteThreadSafeFunction::instantiate(
 			   [this, &text, &hash, &w]() {
 				   #ifdef WL_AMIGAOS4_VIRTIO_GL
-				   log_info("AMIGA FONT HANDLER CHECKPOINT: render lambda entered");
+				   log_checkpoint("AMIGA FONT HANDLER CHECKPOINT: render lambda entered");
 				   #endif
 				   render_cache_->insert(hash, rt_renderer_->render(text, w, fontset()->is_rtl()));
 				   #ifdef WL_AMIGAOS4_VIRTIO_GL
-				   log_info("AMIGA FONT HANDLER CHECKPOINT: render lambda complete");
+				   log_checkpoint("AMIGA FONT HANDLER CHECKPOINT: render lambda complete");
 				   #endif
 			   },
 			   true);
 			#endif
 			#ifdef WL_AMIGAOS4_VIRTIO_GL
-			log_info("AMIGA FONT HANDLER CHECKPOINT: after thread-safe instantiate");
+			log_checkpoint("AMIGA FONT HANDLER CHECKPOINT: after thread-safe instantiate");
 			#endif
 			rendered_text = render_cache_->get(hash);
 			assert(rendered_text);
 		}
 		#ifdef WL_AMIGAOS4_VIRTIO_GL
-		log_info("AMIGA FONT HANDLER CHECKPOINT: render returning");
+		log_checkpoint("AMIGA FONT HANDLER CHECKPOINT: render returning");
 		#endif
 		return rendered_text;
 	}
