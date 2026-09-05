@@ -164,7 +164,11 @@ bool present() {
 	   describes the empty frame the window was opened with -- which is how
 	   "drawn=0" was read as "nothing was ever drawn". Frames 3 and 5 have a
 	   completed frame behind them, and the 300s land in the main menu. */
-	if (frames == 3 || frames == 5 || (frames != 0 && (frames % 300) == 0)) {
+	/* The splash is presented twice and then nothing happens for the length
+	   of the atlas build, so frame 2 is the last chance to read a completed
+	   frame before that silence -- and the first one that describes the
+	   splash rather than the empty frame the window opened with. */
+	if (frames == 2 || frames == 3 || (frames != 0 && (frames % 300) == 0)) {
 		char status[8192];
 		const unsigned written = virtioBackendStatus(status, sizeof(status));
 		if (written != 0u) {
