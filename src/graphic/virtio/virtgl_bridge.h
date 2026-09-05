@@ -101,6 +101,12 @@ unsigned virtioBackendStatus(char* out, unsigned size);
    which is where every Widelands run has been reporting its worker stalls.
    The path is kept as a pointer, so it must outlive the call. */
 void virtioBackendSetLogFile(const char* path);
+
+/* True while the worker still has a frame in flight. present() drops the
+   frame rather than waiting for it, and its own bounded wait is 16ms until
+   a frame interval is known -- far short of what uploading the first few
+   megabytes of textures costs. */
+bool virtioBackendWorkerBusy();
 }  // extern "C"
 
 #endif  // WL_GRAPHIC_VIRTIO_VIRTGL_BRIDGE_H

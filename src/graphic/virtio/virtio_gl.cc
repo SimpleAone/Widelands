@@ -24,6 +24,7 @@
 #include <cstdlib>
 #include <string>
 
+#include <SDL_timer.h>
 #include <SDL_video.h>
 
 #include "base/log.h"
@@ -168,6 +169,32 @@ bool present() {
 	   then clear the capture for the next one. Doing it in any other order
 	   drops a frame or replays the last one. */
 	static unsigned frames = 0;
+	/* Let the worker finish the previous frame first.
+	 *
+	 * present() collects the previous frame and, if the worker is still on
+	 * it, throws it away and reports success. Its own wait is bounded by the
+	 * frame interval -- 16ms until one is known, 60ms at most -- which is
+	 * nowhere near what the first frames cost, since the worker is uploading
+	 * several megabytes of texture at the same time. That is one dropped
+	 * frame out of two at startup, and the dropped one is the splash screen.
+	 *
+	 * A game drawing continuously cannot afford this wait; the layer is
+	 * right not to take it. Widelands presents perhaps ten times a second,
+	 * so waiting here costs nothing and is the difference between a frame
+	 * being shown and being discarded.
+	 *
+	 * This wait is a stopgap, and it measures itself so it does not become a
+	 * permanent one: how long the worker is actually busy is the difference
+	 * between "several megabytes of texture is simply a lot of work" and
+	 * "something in there blocks", and those want opposite fixes. */
+	unsigned waited = 0;
+	while (waited < 2000 && virtioBackendWorkerBusy()) {
+		SDL_Delay(1);
+		++waited;
+	}
+	if (waited != 0 && frames < 8) {
+		log_info("VirtIO GL: waited %ums for the worker before frame %u", waited, frames);
+	}
 	wlgl_virtglPreparePresent();
 	const bool presented = virtioBackendPresent();
 	wlgl_virtglEndFrameCapture();
