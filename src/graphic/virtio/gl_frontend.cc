@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <map>
 #include <set>
@@ -254,7 +255,37 @@ void glBindBuffer(GLenum target, GLuint buffer) {
  * texture yet, and sending the target then would send the screen. Sent only
  * on change, so the once-a-frame rebind of framebuffer 0 costs nothing. */
 GLuint current_render_target = 0;
+
+/* Render-to-texture, off by default.
+ *
+ * It works in the sense that the draws reach the texture, but Widelands uses
+ * framebuffer objects far more widely than the map preview this was written
+ * for -- Texture::fill_rect and blits into a texture go through them too --
+ * and a single missed switch sends screen drawing into a texture instead.
+ * That showed as menu buttons appearing and then vanishing.
+ *
+ * Until every path is accounted for, the honest default is the old
+ * behaviour: those draws go to the screen and are painted over, which loses
+ * the map preview and nothing else.
+ *     setenv widelands_rtt 1
+ */
+bool render_to_texture_enabled() {
+	static int enabled = -1;
+	if (enabled < 0) {
+		const char* value = std::getenv("WIDELANDS_RTT");
+		if (value == nullptr || value[0] == '\0') {
+			value = std::getenv("widelands_rtt");
+		}
+		enabled = value != nullptr && value[0] != '\0' && std::strcmp(value, "0") != 0;
+		log_info("VirtIO GL: render-to-texture %s", enabled != 0 ? "ON" : "off");
+	}
+	return enabled != 0;
+}
+
 void sync_render_target() {
+	if (!render_to_texture_enabled()) {
+		return;
+	}
 	GLuint texture = 0;
 	unsigned width = 0;
 	unsigned height = 0;
