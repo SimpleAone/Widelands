@@ -617,12 +617,12 @@ WLApplication::WLApplication(int const argc, char const* const* const argv)
 	} catch (const std::exception& e) {
 		log_err("AMIGA STARTUP: rebuild_texture_atlas failed: %s", e.what());
 		std::fflush(stdout);
-		std::freopen("shared:widelands/widelands.out", "a", stdout);
+		std::freopen("PROGDIR:widelands.out", "a", stdout);
 		throw;
 	}
 	log_info("AMIGA STARTUP CHECKPOINT: after rebuild_texture_atlas");
 	std::fflush(stdout);
-	std::freopen("shared:widelands/widelands.out", "a", stdout);
+	std::freopen("PROGDIR:widelands.out", "a", stdout);
 	#else
 	g_gr->rebuild_texture_atlas();
 	#endif

@@ -76,11 +76,14 @@ void do_log(LogType, const Time& gametime, const char*, ...) PRINTF_FORMAT(3, 4)
  * For the slow phases that report nothing, never per frame: it costs an
  * open and a close each time. */
 #ifdef __amigaos4__
+void log_mirror_write(const char* text);
+void log_mirror_reopen();
 #define log_progress(...)                                                                          \
 	do {                                                                                            \
 		do_log(LogType::kInfo, Time(), __VA_ARGS__);                                                 \
 		std::fflush(stdout);                                                                         \
-		std::freopen("shared:widelands/widelands.out", "a", stdout);                                  \
+		std::freopen("PROGDIR:widelands.out", "a", stdout);                                          \
+		log_mirror_reopen();                                                                         \
 	} while (false)
 #else
 #define log_progress(...) do_log(LogType::kInfo, Time(), __VA_ARGS__)

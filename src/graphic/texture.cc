@@ -17,6 +17,8 @@
 
 #include "graphic/texture.h"
 
+#include <algorithm>
+
 #include <cassert>
 #include <cstddef>
 
@@ -107,10 +109,48 @@ Texture::Texture(int w, int h) : owns_texture_(false) {
 	             GL_UNSIGNED_BYTE, nullptr);
 }
 
+#ifdef __amigaos4__
+int g_max_image_dimension = 0;
+#endif
+
 Texture::Texture(SDL_Surface* surface, bool intensity) : owns_texture_(false) {
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
 	log_checkpoint("AMIGA TEXTURE CHECKPOINT: constructor start %dx%d bpp=%u", surface->w, surface->h,
 	         static_cast<unsigned>(surface->format->BytesPerPixel));
+	#endif
+	#ifdef __amigaos4__
+	/* Nothing larger than the window it will be drawn in.
+	 *
+	 * The main menu rotates seventeen background images of 1920x1080, and one
+	 * of 2592x1944 -- 7MB and 19MB respectively once they are RGBA textures,
+	 * for a window of 800x600 they are scaled down into anyway. Loading them
+	 * cost 41 seconds of a run and most of the 124MB the session was holding.
+	 *
+	 * Only images bigger than the window are touched, so nothing in the UI
+	 * changes size; those are all far smaller. The atlas is built through the
+	 * (int, int) constructor and never comes through here. */
+	if (g_max_image_dimension > 0 &&
+	    (surface->w > g_max_image_dimension || surface->h > g_max_image_dimension)) {
+		const double scale = std::min(static_cast<double>(g_max_image_dimension) / surface->w,
+		                              static_cast<double>(g_max_image_dimension) / surface->h);
+		const int scaled_w = std::max(1, static_cast<int>(surface->w * scale));
+		const int scaled_h = std::max(1, static_cast<int>(surface->h * scale));
+		SDL_Surface* smaller = empty_sdl_surface(scaled_w, scaled_h);
+		if (smaller != nullptr) {
+			SDL_SetSurfaceAlphaMod(surface, SDL_ALPHA_OPAQUE);
+			SDL_SetSurfaceBlendMode(surface, SDL_BLENDMODE_NONE);
+			SDL_SetSurfaceAlphaMod(smaller, SDL_ALPHA_OPAQUE);
+			SDL_SetSurfaceBlendMode(smaller, SDL_BLENDMODE_NONE);
+			if (SDL_BlitScaled(surface, nullptr, smaller, nullptr) == 0) {
+				log_info("AMIGA IMAGE: scaled %dx%d down to %dx%d", surface->w, surface->h, scaled_w,
+				         scaled_h);
+				SDL_FreeSurface(surface);
+				surface = smaller;
+			} else {
+				SDL_FreeSurface(smaller);
+			}
+		}
+	}
 	#endif
 	init(surface->w, surface->h);
 	#ifdef WL_AMIGAOS4_VIRTIO_GL

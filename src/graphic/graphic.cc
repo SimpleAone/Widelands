@@ -18,6 +18,8 @@
 
 #include "graphic/graphic.h"
 
+#include <algorithm>
+
 #include <memory>
 
 #include <SDL_messagebox.h>
@@ -148,6 +150,14 @@ void Graphic::initialize(const TraceGl& trace_gl,
 #ifdef WL_AMIGAOS4_VIRTIO_NO_SHADERS
 	log_warn("Graphics: NO-SHADER DIAGNOSTIC MODE; all valid draw calls are discarded\n");
 #endif
+#endif
+#ifdef __amigaos4__
+	/* Background art is authored at 1920x1080 and larger; on an 800x600
+	   window that is megabytes of texture per image for something scaled
+	   down before it is ever seen. Keep headroom over the window so a modest
+	   resize does not soften everything. */
+	g_max_image_dimension = std::max(1024, std::max(window_mode_width_, window_mode_height_));
+	log_info("Graphics: images capped at %d pixels", g_max_image_dimension);
 #endif
 	gl_context_ = Gl::initialize(
 	   trace_gl == TraceGl::kYes ? Gl::Trace::kYes : Gl::Trace::kNo, sdl_window_, &max);

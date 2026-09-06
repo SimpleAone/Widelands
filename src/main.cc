@@ -181,10 +181,13 @@ static const char* const kStackCookie __attribute__((used)) = "$STACK:2097152";
  */
 int main(int argc, char* argv[]) {
 #ifdef WL_AMIGAOS4_VIRTIO_GL
-	if (std::freopen("shared:widelands/widelands.out", "w", stdout) != nullptr) {
+	/* Beside the program, not on the share. SHARED: is not mounted when
+	   Widelands is run from a hard disk, and then the whole log went nowhere
+	   -- including every progress line that reopens this path. */
+	if (std::freopen("PROGDIR:widelands.out", "w", stdout) != nullptr) {
 		std::setvbuf(stdout, nullptr, _IOLBF, 0);
 	}
-	if (std::freopen("shared:widelands/widelands.out", "a", stderr) != nullptr) {
+	if (std::freopen("PROGDIR:widelands.out", "a", stderr) != nullptr) {
 		std::setvbuf(stderr, nullptr, _IOLBF, 0);
 	}
 	std::cout << "AmigaOS4 port build " << WL_AMIGAOS4_PORT_VERSION << " ("

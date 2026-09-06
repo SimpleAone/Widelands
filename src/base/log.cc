@@ -40,6 +40,42 @@
 #include "build_info.h"
 #endif
 
+#ifdef __amigaos4__
+/* A second copy of the log on the share.
+ *
+ * stdout goes to PROGDIR: so a run from a hard disk keeps its log, and that
+ * is also the fast one -- every write to a 9P share is a round trip to the
+ * host. But the share is the only place reachable from outside the emulator,
+ * so the same lines are mirrored there.
+ *
+ * Best effort: if the share is not mounted the mirror simply never opens and
+ * nothing else changes. */
+static FILE* g_log_mirror = nullptr;
+static bool g_log_mirror_tried = false;
+
+void log_mirror_write(const char* text) {
+	if (!g_log_mirror_tried) {
+		g_log_mirror_tried = true;
+		g_log_mirror = std::fopen("SHARED:widelands/widelands.out", "w");
+	}
+	if (g_log_mirror != nullptr) {
+		std::fputs(text, g_log_mirror);
+		std::fflush(g_log_mirror);
+	}
+}
+
+/* The 9P handler holds writes until the file is closed, so a flush is not
+   enough to make a line visible from the host while the game is still
+   running. Closing and reopening is. Called from log_progress(), which is
+   for the slow silent phases only -- never per frame. */
+void log_mirror_reopen() {
+	if (g_log_mirror != nullptr) {
+		std::fclose(g_log_mirror);
+		g_log_mirror = std::fopen("SHARED:widelands/widelands.out", "a");
+	}
+}
+#endif
+
 namespace {
 
 // Forward declaration to work around cyclic dependency.
@@ -103,6 +139,7 @@ void sdl_logging_func(void* userdata,
 }
 #else  // _WIN32
 
+
 class Logger {
 public:
 	Logger() {
@@ -112,6 +149,9 @@ public:
 	void log_cstring(const char* buffer) {
 		std::cout << buffer;
 		std::cout.flush();
+		#ifdef __amigaos4__
+		log_mirror_write(buffer);
+		#endif
 	}
 
 private:
