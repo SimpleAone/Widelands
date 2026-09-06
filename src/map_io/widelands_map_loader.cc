@@ -429,6 +429,9 @@ int32_t WidelandsMapLoader::load_map_complete(EditorGameBase& egbase,
 
 		// Map data used by win conditions.
 		verb_log_info("Reading Wincondition Data ... ");
+		#ifdef __amigaos4__
+		log_progress("AMIGA LOADING: messages packet done");
+		#endif
 		set_progress_message(_("Win condition"), 19);
 		{
 			MapWinconditionPacket p;

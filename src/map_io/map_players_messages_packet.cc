@@ -48,6 +48,12 @@ void MapPlayersMessagesPacket::read(FileSystem& fs,
 	Extent const extent = map.extent();
 	PlayerNumber const nr_players = map.get_nrplayers();
 	iterate_players_existing(p, nr_players, egbase, player) try {
+		#ifdef __amigaos4__
+		/* Step 18 of 24 is where a scenario load went quiet, with step 19
+		   never announced -- so it is inside this packet, and there was no
+		   way to see which player it was on. */
+		log_progress("AMIGA MESSAGES: player %u", static_cast<unsigned>(p));
+		#endif
 		Profile prof;
 		try {
 			const std::string profile_filename =
