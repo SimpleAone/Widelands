@@ -84,8 +84,21 @@ static SDL_Surface* downscale_to_fit(SDL_Surface* surface) {
 	                              static_cast<double>(g_max_image_dimension) / surface->h);
 	const int scaled_w = std::max(1, static_cast<int>(surface->w * scale));
 	const int scaled_h = std::max(1, static_cast<int>(surface->h * scale));
-	SDL_Surface* smaller =
-	   SDL_CreateRGBSurfaceWithFormat(0, scaled_w, scaled_h, 32, SDL_PIXELFORMAT_ABGR8888);
+	/* Exactly the source's format, masks included. Creating the target with
+	   a named format instead swapped the colour channels: the loader hands
+	   over whatever SDL_image produced, and on big-endian PowerPC a named
+	   32-bit format is not the same byte order as the masks that came with
+	   the surface. Same format in and out also means SDL_BlitScaled copies
+	   rather than converts.
+
+	   A palette cannot be scaled this way, so those are left alone -- they
+	   are small anyway; the images this exists for are 24-bit photographs. */
+	if (surface->format->palette != nullptr || surface->format->BytesPerPixel != 4) {
+		return surface;
+	}
+	SDL_Surface* smaller = SDL_CreateRGBSurface(
+	   0, scaled_w, scaled_h, surface->format->BitsPerPixel, surface->format->Rmask,
+	   surface->format->Gmask, surface->format->Bmask, surface->format->Amask);
 	if (smaller == nullptr) {
 		return surface;
 	}
