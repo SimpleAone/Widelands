@@ -366,6 +366,19 @@ MutexLock::MutexLock(const ID i) : id_(i) {
 		const uint32_t now = SDL_GetTicks();
 		if (now - start_time > 1000 && now - last_log_time > 1000) {
 			last_log_time = now;
+			#ifdef __amigaos4__
+			/* Always, not only under --verbose. A mutex that never comes free
+			   is a hang with no output at all, which is indistinguishable
+			   from every other silent phase this port has -- and this port
+			   runs single-threaded, so it is a real possibility that the
+			   thread waiting here is the one holding it. Say which mutex, and
+			   whether the waiter already owns it. */
+			if (id_ != ID::kLog) {
+				log_progress("AMIGA MUTEX: %s waiting %u ms for %s%s", thread_name(self).c_str(),
+				             now - start_time, to_string(id_).c_str(),
+				             record.current_owner == self ? " -- WHICH IT ALREADY OWNS" : "");
+			}
+			#endif
 			if (id_ != ID::kLog) {
 				verb_log_dbg("WARNING: %s locking mutex %s, already waiting for %u ms",
 				             thread_name(self).c_str(), to_string(id_).c_str(), now - start_time);
