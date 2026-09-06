@@ -85,9 +85,7 @@ int32_t WidelandsMapLoader::preload_map(bool const scenario, AddOns::AddOnsList*
 	   what actually pushes it across: the share holds writes until close. */
 	{
 		static unsigned preloaded = 0;
-		log_info("AMIGA MAP PRELOAD: %u %s", ++preloaded, filename_.c_str());
-		std::fflush(stdout);
-		std::freopen("shared:widelands/widelands.out", "a", stdout);
+		log_progress("AMIGA MAP PRELOAD: %u %s", ++preloaded, filename_.c_str());
 	}
 	#endif
 

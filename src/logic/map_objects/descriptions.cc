@@ -560,6 +560,7 @@ void Descriptions::ensure_tribes_are_registered() {
 }
 
 DescriptionIndex Descriptions::load_tribe(const std::string& tribename) {
+	log_progress("AMIGA LOADING: tribe '%s'", tribename.c_str());
 	try {
 		// Register tribes on demand for better performance during mapselect, for the editor and for
 		// the website tools

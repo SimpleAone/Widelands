@@ -589,6 +589,9 @@ DescriptionIndex MapGenerator::figure_out_terrain(const uint32_t* random2,
 }
 
 bool MapGenerator::create_random_map() {
+	/* Generating a world is minutes of pure computation on this machine and
+	   announces nothing, so it is indistinguishable from a hang. */
+	log_progress("AMIGA MAPGEN: start %ux%u", map_.get_width(), map_.get_height());
 	//  Init random number generator with map number
 
 	//  We will use our own random number generator here so we do not influence
@@ -597,6 +600,7 @@ bool MapGenerator::create_random_map() {
 
 	rng.seed(map_info_.mapNumber);
 
+	log_progress("AMIGA MAPGEN: %s", "elevation matrix");
 	//  Create a "raw" random elevation matrix.
 	//  We will transform this into reasonable elevations and terrains later on.
 
@@ -627,6 +631,7 @@ bool MapGenerator::create_random_map() {
 		random_bobs[ix].reset(generate_random_value_map(map_info_.w, map_info_.h, rng));
 	}
 
+	log_progress("AMIGA MAPGEN: %s", "random data ready");
 	//  Now we have generated a lot of random data!!
 	//  Lets use it !!!
 	iterate_Map_FCoords(map_, map_info_, fc) fc.field->set_height(
@@ -634,6 +639,7 @@ bool MapGenerator::create_random_map() {
 	                          static_cast<double>(kMaxElevation),
 	                       fc));
 
+	log_progress("AMIGA MAPGEN: %s", "terrain from heights");
 	//  Now lets set the terrain right according to the heights.
 
 	iterate_Map_FCoords(map_, map_info_, fc) {
@@ -689,6 +695,7 @@ bool MapGenerator::create_random_map() {
 		generate_bobs(random_bobs.get(), fc, rng, terrType);
 	}
 
+	log_progress("AMIGA MAPGEN: %s", "aftermath");
 	//  Aftermaths...
 	map_.recalc_whole_map(egbase_);
 

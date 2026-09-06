@@ -21,6 +21,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <cstdio>
 #include <string>
 
 #include "base/macros.h"
@@ -62,6 +63,27 @@ void do_log(LogType, const Time& gametime, const char*, ...) PRINTF_FORMAT(3, 4)
 #define log_checkpoint(...) do_log(LogType::kInfo, Time(), __VA_ARGS__)
 #else
 #define log_checkpoint(...) ((void)0)
+#endif
+
+/* A progress line that actually reaches the host.
+ *
+ * stdout is a file on a 9P share: the handler holds writes until the file is
+ * closed, so an ordinary log line during a long silent phase never arrives
+ * and the log simply appears to stop. Every stall this port has had -- the
+ * texture atlas, the map list, a throw during startup -- looked identical
+ * from outside for that reason. Reopening the file is what pushes it across.
+ *
+ * For the slow phases that report nothing, never per frame: it costs an
+ * open and a close each time. */
+#ifdef __amigaos4__
+#define log_progress(...)                                                                          \
+	do {                                                                                            \
+		do_log(LogType::kInfo, Time(), __VA_ARGS__);                                                 \
+		std::fflush(stdout);                                                                         \
+		std::freopen("shared:widelands/widelands.out", "a", stdout);                                  \
+	} while (false)
+#else
+#define log_progress(...) do_log(LogType::kInfo, Time(), __VA_ARGS__)
 #endif
 
 #define log_info(...) do_log(LogType::kInfo, Time(), __VA_ARGS__)

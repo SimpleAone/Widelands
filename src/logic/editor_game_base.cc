@@ -360,6 +360,15 @@ UI::ProgressWindow& EditorGameBase::create_loader_ui(const std::vector<std::stri
 	return *loader_ui_;
 }
 void EditorGameBase::step_loader_ui(const std::string& text) const {
+	#ifdef __amigaos4__
+	/* Every long silent phase already announces itself here -- loading a
+	   map, its packets, the tribes, the world -- and the announcements went
+	   only to a loader window. On this port that leaves minutes of silence
+	   that look exactly like a hang, so they go to the log as well. One tap
+	   covers every phase that publishes NoteLoadingMessage; there is nothing
+	   per-frame among them. */
+	log_progress("AMIGA LOADING: %s", text.c_str());
+	#endif
 	if (loader_ui_ != nullptr) {
 		loader_ui_->step(text);
 	}
