@@ -242,6 +242,39 @@ void glBindBuffer(GLenum target, GLuint buffer) {
 	bound_buffer = buffer;
 }
 
+/* Tell the layer where the next draws go.
+ *
+ * Until this existed a framebuffer bind was recorded and nothing else: the
+ * draws went to the screen, were painted over by the rest of the frame, and
+ * the texture kept whatever it already held -- the white rectangle where a
+ * map preview belongs.
+ *
+ * Called from both glBindFramebuffer and glFramebufferTexture2D, because GL
+ * binds first and attaches second: at bind time the framebuffer has no
+ * texture yet, and sending the target then would send the screen. Sent only
+ * on change, so the once-a-frame rebind of framebuffer 0 costs nothing. */
+GLuint current_render_target = 0;
+void sync_render_target() {
+	GLuint texture = 0;
+	unsigned width = 0;
+	unsigned height = 0;
+	if (bound_framebuffer != 0) {
+		texture = framebuffers[bound_framebuffer].colour_texture;
+		const auto found = textures.find(texture);
+		if (found == textures.end()) {
+			texture = 0;
+		} else {
+			width = static_cast<unsigned>(found->second.width);
+			height = static_cast<unsigned>(found->second.height);
+		}
+	}
+	if (texture == current_render_target) {
+		return;
+	}
+	current_render_target = texture;
+	wlgl_virtglSetRenderTarget(texture, width, height);
+}
+
 void glBindFramebuffer(GLenum target, GLuint framebuffer) {
 	if (target != GL_FRAMEBUFFER) {
 		set_error(GL_INVALID_ENUM);
@@ -252,22 +285,7 @@ void glBindFramebuffer(GLenum target, GLuint framebuffer) {
 		return;
 	}
 	bound_framebuffer = framebuffer;
-	/* Tell the layer where the next draws go. Until now this was recorded
-	   and nothing else: the draws went to the screen, were painted over by
-	   the rest of the frame, and the texture kept whatever it already held.
-	   That is the white rectangle where a map preview belongs. */
-	if (framebuffer == 0) {
-		wlgl_virtglSetRenderTarget(0, 0, 0);
-	} else {
-		const GLuint texture = framebuffers[framebuffer].colour_texture;
-		const auto found = textures.find(texture);
-		if (found == textures.end()) {
-			wlgl_virtglSetRenderTarget(0, 0, 0);
-		} else {
-			wlgl_virtglSetRenderTarget(texture, static_cast<unsigned>(found->second.width),
-			                           static_cast<unsigned>(found->second.height));
-		}
-	}
+	sync_render_target();
 }
 
 void glBindTexture(GLenum target, GLuint texture) {
@@ -738,6 +756,7 @@ void glFramebufferTexture2D(
 		return;
 	}
 	framebuffers[bound_framebuffer].colour_texture = texture;
+	sync_render_target();
 }
 
 void glGenBuffers(GLsizei count, GLuint* objects) {

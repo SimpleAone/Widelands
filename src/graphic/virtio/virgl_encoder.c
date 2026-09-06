@@ -14,6 +14,7 @@ void vgpu_virgl_scissor_bit(int on) { scissorBit = on ? (1U << 14) : 0U; }
 enum {
     VIRGL_CREATE_OBJECT = 1,
     VIRGL_BIND_OBJECT = 2,
+    VIRGL_DESTROY_OBJECT = 3,
     VIRGL_SET_VIEWPORT = 4,
     VIRGL_SET_FRAMEBUFFER = 5,
     VIRGL_SET_VERTEX_BUFFERS = 6,
@@ -94,6 +95,16 @@ void vgpu_virgl_command(vgpu_virgl_encoder *encoder, uint8_t command,
 void vgpu_virgl_bind_object(vgpu_virgl_encoder *encoder, uint8_t object,
                             uint32_t handle) {
     vgpu_virgl_command(encoder, VIRGL_BIND_OBJECT, object, 1U);
+    vgpu_virgl_dword(encoder, handle);
+}
+
+/* virglrenderer refuses to insert an object under a handle that already
+   exists, silently, so a handle that is reused -- the render-to-texture
+   surface is remade on every target change -- has to be destroyed first or
+   the old object stays bound. */
+void vgpu_virgl_destroy_object(vgpu_virgl_encoder *encoder, uint8_t object,
+                               uint32_t handle) {
+    vgpu_virgl_command(encoder, VIRGL_DESTROY_OBJECT, object, 1U);
     vgpu_virgl_dword(encoder, handle);
 }
 

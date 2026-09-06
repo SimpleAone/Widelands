@@ -21,6 +21,8 @@ void vgpu_virgl_command(vgpu_virgl_encoder *encoder, uint8_t command,
                         uint8_t object, uint16_t payload_dwords);
 void vgpu_virgl_bind_object(vgpu_virgl_encoder *encoder, uint8_t object,
                             uint32_t handle);
+void vgpu_virgl_destroy_object(vgpu_virgl_encoder *encoder, uint8_t object,
+                               uint32_t handle);
 void vgpu_virgl_create_surface(vgpu_virgl_encoder *encoder, uint32_t handle,
                                uint32_t resource, uint32_t format);
 void vgpu_virgl_create_surface_layer(vgpu_virgl_encoder *encoder,
