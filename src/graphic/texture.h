@@ -26,12 +26,6 @@
 
 struct SDL_Surface;
 
-#ifdef __amigaos4__
-/* No image is uploaded larger than this in either dimension; 0 disables it.
-   Set once the window size is known -- see Graphic::initialize. */
-extern int g_max_image_dimension;
-#endif
-
 class Texture : public Surface, public Image {
 public:
 	// Create a new surface from an SDL_Surface. If intensity is true, an GL_INTENSITY texture

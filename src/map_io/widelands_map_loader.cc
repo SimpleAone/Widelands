@@ -84,8 +84,12 @@ int32_t WidelandsMapLoader::preload_map(bool const scenario, AddOns::AddOnsList*
 	   Counting them separates "slow" from "stuck", and reopening the log is
 	   what actually pushes it across: the share holds writes until close. */
 	{
+		/* fs_->get_basename(), not filename_: WidelandsMapLoader is built as
+		   MapLoader("", *m), so filename_ is empty and the counter could say
+		   how far it got but never which map it was stuck on. */
 		static unsigned preloaded = 0;
-		log_progress("AMIGA MAP PRELOAD: %u %s", ++preloaded, filename_.c_str());
+		log_progress("AMIGA MAP PRELOAD: %u %s", ++preloaded,
+		             fs_ != nullptr ? fs_->get_basename().c_str() : "?");
 	}
 	#endif
 
@@ -159,6 +163,11 @@ int32_t WidelandsMapLoader::preload_map(bool const scenario, AddOns::AddOnsList*
 
 	set_state(State::kPreLoaded);
 
+	#ifdef __amigaos4__
+	/* Paired with the line above, so a map that never finishes is obvious:
+	   the last PRELOAD without a DONE is the one it is stuck in. */
+	log_progress("AMIGA MAP PRELOAD DONE");
+	#endif
 	return 0;
 }
 

@@ -18,6 +18,8 @@
 
 #include "graphic/image_io.h"
 
+#include <algorithm>
+
 #include <cstddef>
 #include <memory>
 
@@ -55,8 +57,60 @@ inline void ensure_sdl_image_is_initialized() {
 
 }  // namespace
 
+#ifdef __amigaos4__
+int g_max_image_dimension = 0;
+
+/* Background art only.
+ *
+ * The main menu rotates seventeen backgrounds of 1920x1080 and a splash of
+ * 2592x1944 -- 7MB and 19MB apiece as RGBA -- for a window they are scaled
+ * into anyway. That was tens of megabytes and 41 seconds of one run.
+ *
+ * It must stay to backgrounds. The other images this size are animation
+ * spritesheets (tribes/ships/amazons/sail_nw_4_pc.png is 3690x2035), where
+ * frames are cut at fixed pixel positions: scaling one silently breaks every
+ * frame in it. That is why the cap lives here, where the path is known, and
+ * not in the Texture constructor, which sees only pixels. */
+static bool is_background_image(const std::string& fname) {
+	return fname.find("loadscreens") != std::string::npos;
+}
+
+static SDL_Surface* downscale_to_fit(SDL_Surface* surface) {
+	if (surface == nullptr || g_max_image_dimension <= 0 ||
+	    (surface->w <= g_max_image_dimension && surface->h <= g_max_image_dimension)) {
+		return surface;
+	}
+	const double scale = std::min(static_cast<double>(g_max_image_dimension) / surface->w,
+	                              static_cast<double>(g_max_image_dimension) / surface->h);
+	const int scaled_w = std::max(1, static_cast<int>(surface->w * scale));
+	const int scaled_h = std::max(1, static_cast<int>(surface->h * scale));
+	SDL_Surface* smaller =
+	   SDL_CreateRGBSurfaceWithFormat(0, scaled_w, scaled_h, 32, SDL_PIXELFORMAT_ABGR8888);
+	if (smaller == nullptr) {
+		return surface;
+	}
+	SDL_SetSurfaceAlphaMod(surface, SDL_ALPHA_OPAQUE);
+	SDL_SetSurfaceBlendMode(surface, SDL_BLENDMODE_NONE);
+	SDL_SetSurfaceAlphaMod(smaller, SDL_ALPHA_OPAQUE);
+	SDL_SetSurfaceBlendMode(smaller, SDL_BLENDMODE_NONE);
+	if (SDL_BlitScaled(surface, nullptr, smaller, nullptr) != 0) {
+		SDL_FreeSurface(smaller);
+		return surface;
+	}
+	log_info("AMIGA IMAGE: scaled %dx%d down to %dx%d", surface->w, surface->h, scaled_w, scaled_h);
+	SDL_FreeSurface(surface);
+	return smaller;
+}
+#endif
+
 std::unique_ptr<Texture> load_image(const std::string& fname, FileSystem* fs) {
-	return std::unique_ptr<Texture>(new Texture(load_image_as_sdl_surface(fname, fs)));
+	SDL_Surface* surface = load_image_as_sdl_surface(fname, fs);
+	#ifdef __amigaos4__
+	if (is_background_image(fname)) {
+		surface = downscale_to_fit(surface);
+	}
+	#endif
+	return std::unique_ptr<Texture>(new Texture(surface));
 }
 
 SDL_Surface* load_image_as_sdl_surface(const std::string& fname, FileSystem* fs) {

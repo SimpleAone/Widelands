@@ -42,6 +42,14 @@ public:
 };
 
 /// Loads the image 'fn' from 'fs'.
+#ifdef __amigaos4__
+/* Background images are not uploaded larger than this in either dimension;
+   0 disables it. Set once the window size is known -- see
+   Graphic::initialize. Backgrounds only: spritesheets must keep their exact
+   pixel size or every frame cut out of them moves. */
+extern int g_max_image_dimension;
+#endif
+
 std::unique_ptr<Texture> load_image(const std::string& fn, FileSystem* fs = nullptr);
 
 /// Loads the image 'fn' from 'fs' into an SDL_Surface. Caller must SDL_FreeSurface() the returned
