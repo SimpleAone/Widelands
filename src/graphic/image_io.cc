@@ -18,6 +18,8 @@
 
 #include "graphic/image_io.h"
 
+#include "graphic/sdl_utils.h"
+
 #include <algorithm>
 
 #include <cstddef>
@@ -84,21 +86,15 @@ static SDL_Surface* downscale_to_fit(SDL_Surface* surface) {
 	                              static_cast<double>(g_max_image_dimension) / surface->h);
 	const int scaled_w = std::max(1, static_cast<int>(surface->w * scale));
 	const int scaled_h = std::max(1, static_cast<int>(surface->h * scale));
-	/* Exactly the source's format, masks included. Creating the target with
-	   a named format instead swapped the colour channels: the loader hands
-	   over whatever SDL_image produced, and on big-endian PowerPC a named
-	   32-bit format is not the same byte order as the masks that came with
-	   the surface. Same format in and out also means SDL_BlitScaled copies
-	   rather than converts.
-
-	   A palette cannot be scaled this way, so those are left alone -- they
-	   are small anyway; the images this exists for are 24-bit photographs. */
-	if (surface->format->palette != nullptr || surface->format->BytesPerPixel != 4) {
-		return surface;
-	}
-	SDL_Surface* smaller = SDL_CreateRGBSurface(
-	   0, scaled_w, scaled_h, surface->format->BitsPerPixel, surface->format->Rmask,
-	   surface->format->Gmask, surface->format->Bmask, surface->format->Amask);
+	/* empty_sdl_surface(), the same one Texture uses for its own conversions.
+	   Two earlier attempts got the format wrong in ways that only show on
+	   this machine: a named 32-bit format (ABGR8888) is not the byte order
+	   the masks describe on big-endian PowerPC, so the channels swapped; and
+	   copying the source's masks gives a target with no alpha for a JPEG,
+	   which comes out black. This one is known good, and it is what the
+	   texture upload path expects anyway. */
+	SDL_Surface* smaller = empty_sdl_surface(static_cast<int16_t>(scaled_w),
+	                                         static_cast<int16_t>(scaled_h));
 	if (smaller == nullptr) {
 		return surface;
 	}
