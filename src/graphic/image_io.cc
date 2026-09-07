@@ -26,6 +26,7 @@
 #include <memory>
 
 #include <SDL_image.h>
+#include <SDL_timer.h>
 #include <png.h>
 
 #include "base/log.h"
@@ -116,6 +117,36 @@ static SDL_Surface* downscale_to_fit(SDL_Surface* surface) {
 }
 #endif
 
+#ifdef WL_AMIGAOS4_VIRTIO_GL
+/* Where the loading time actually goes, in three buckets.
+ *
+ * Loading to the main menu is ~5s natively on Linux and ~90s here, and that
+ * comparison isolates nothing: this runs under QEMU's TCG emulation, off a
+ * 9P share, and until now with thousands of log lines on top. All three
+ * differ at once, so apportioning them by argument is guesswork. These
+ * accumulate instead, and ride out on the progress line that already prints
+ * every hundredth image.
+ *
+ * read   = FileRead::try_open, which pulls the whole file across 9P.
+ * decode = IMG_Load_RW, i.e. libpng and zlib on an e500v2 under TCG.
+ * tex    = the Texture constructor: SDL conversion, swap_rows (a per-pixel
+ *          byte swap this port needs on big-endian) and glTexImage2D.
+ * Whatever the three do not add up to is the caller's own work. */
+double g_load_read_ms = 0.0, g_load_decode_ms = 0.0, g_load_texture_ms = 0.0;
+
+static double now_ms() {
+	static Uint64 freq = 0;
+	if (freq == 0) {
+		freq = SDL_GetPerformanceFrequency();
+		if (freq == 0) {
+			freq = 1;
+		}
+	}
+	return static_cast<double>(SDL_GetPerformanceCounter()) * 1000.0 /
+	       static_cast<double>(freq);
+}
+#endif
+
 std::unique_ptr<Texture> load_image(const std::string& fname, FileSystem* fs) {
 	SDL_Surface* surface = load_image_as_sdl_surface(fname, fs);
 	#ifdef __amigaos4__
@@ -123,7 +154,14 @@ std::unique_ptr<Texture> load_image(const std::string& fname, FileSystem* fs) {
 		surface = downscale_to_fit(surface);
 	}
 	#endif
+	#ifdef WL_AMIGAOS4_VIRTIO_GL
+	const double t0 = now_ms();
+	std::unique_ptr<Texture> texture(new Texture(surface));
+	g_load_texture_ms += now_ms() - t0;
+	return texture;
+	#else
 	return std::unique_ptr<Texture>(new Texture(surface));
+	#endif
 }
 
 SDL_Surface* load_image_as_sdl_surface(const std::string& fname, FileSystem* fs) {
@@ -142,11 +180,17 @@ SDL_Surface* load_image_as_sdl_surface(const std::string& fname, FileSystem* fs)
 
 	FileRead fr;
 	bool found;
+	#ifdef WL_AMIGAOS4_VIRTIO_GL
+	const double t_read = now_ms();
+	#endif
 	if (fs != nullptr) {
 		found = fr.try_open(*fs, fname);
 	} else {
 		found = fr.try_open(*g_fs, fname);
 	}
+	#ifdef WL_AMIGAOS4_VIRTIO_GL
+	g_load_read_ms += now_ms() - t_read;
+	#endif
 
 	if (!found) {
 		throw ImageNotFound(fname);
@@ -155,7 +199,13 @@ SDL_Surface* load_image_as_sdl_surface(const std::string& fname, FileSystem* fs)
 	               static_cast<unsigned>(fr.get_size()));
 	log_checkpoint("AMIGA IMAGE CHECKPOINT: before IMG_Load_RW for %s", fname.c_str());
 
+	#ifdef WL_AMIGAOS4_VIRTIO_GL
+	const double t_decode = now_ms();
+	#endif
 	SDL_Surface* sdlsurf = IMG_Load_RW(SDL_RWFromMem(fr.data(0), fr.get_size()), 1);
+	#ifdef WL_AMIGAOS4_VIRTIO_GL
+	g_load_decode_ms += now_ms() - t_decode;
+	#endif
 	if (sdlsurf == nullptr) {
 		throw ImageLoadingError(fname, IMG_GetError());
 	}
@@ -175,12 +225,28 @@ SDL_Surface* load_image_as_sdl_surface(const std::string& fname, FileSystem* fs)
 	 * stops. */
 	{
 		static unsigned loaded = 0;
-		if (++loaded % 100U == 0U)
+		static double wall_start = 0.0;
+		if (wall_start == 0.0) {
+			wall_start = now_ms();
+		}
+		if (++loaded % 100U == 0U) {
+			/* Cumulative, not per-window: the question is what fraction of
+			   the whole load each phase owns, and a running total answers it
+			   without needing the lines subtracted from each other. wall= is
+			   the elapsed time since the first image, so the three buckets
+			   can be read against the time they had to fit into. */
+			const double wall = now_ms() - wall_start;
 			log_progress("AMIGA IMAGE MEMORY: %u images, %lu KB free, "
-			             "%lu KB largest",
+			             "%lu KB largest, wall=%.0fms "
+			             "read=%.0f decode=%.0f tex=%.0f other=%.0f",
 			             loaded,
 			             (unsigned long)IExec->AvailMem(MEMF_ANY) / 1024UL,
-			             (unsigned long)IExec->AvailMem(MEMF_LARGEST) / 1024UL);
+			             (unsigned long)IExec->AvailMem(MEMF_LARGEST) / 1024UL,
+			             wall, g_load_read_ms, g_load_decode_ms,
+			             g_load_texture_ms,
+			             wall - g_load_read_ms - g_load_decode_ms -
+			                g_load_texture_ms);
+		}
 	}
 	#endif
 	return sdlsurf;
