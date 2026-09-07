@@ -20,8 +20,8 @@
 
 #include <cassert>
 #include <cstdarg>
-#ifdef _WIN32
 #include <cstdio>
+#ifdef _WIN32
 #include <fstream>
 #endif
 #include <iostream>
@@ -53,14 +53,36 @@
 static FILE* g_log_mirror = nullptr;
 static bool g_log_mirror_tried = false;
 
+/* Buffered, and deliberately not flushed per line.
+ *
+ * It used to fflush after every line, which bought exactly nothing: the note
+ * on log_mirror_reopen() below is the reason -- the 9P handler holds writes
+ * until the file is closed, so a flush pushes the line out of stdio and into
+ * a handler that sits on it anyway. Nothing became visible any sooner, and
+ * every line paid a write across the host boundary for it. The load path is
+ * thousands of lines.
+ *
+ * What is lost by buffering is nothing that was not already lost: on a crash
+ * the handler discards its own buffer too. The copy that survives a crash is
+ * stdout on PROGDIR:, which is still flushed per line and is on a local
+ * disk. */
+static char g_log_mirror_buffer[64 * 1024];
+
+static void log_mirror_open(const char* mode) {
+	g_log_mirror = std::fopen("SHARED:widelands/widelands.out", mode);
+	if (g_log_mirror != nullptr) {
+		std::setvbuf(g_log_mirror, g_log_mirror_buffer, _IOFBF,
+		             sizeof g_log_mirror_buffer);
+	}
+}
+
 void log_mirror_write(const char* text) {
 	if (!g_log_mirror_tried) {
 		g_log_mirror_tried = true;
-		g_log_mirror = std::fopen("SHARED:widelands/widelands.out", "w");
+		log_mirror_open("w");
 	}
 	if (g_log_mirror != nullptr) {
 		std::fputs(text, g_log_mirror);
-		std::fflush(g_log_mirror);
 	}
 }
 
@@ -70,8 +92,8 @@ void log_mirror_write(const char* text) {
    for the slow silent phases only -- never per frame. */
 void log_mirror_reopen() {
 	if (g_log_mirror != nullptr) {
-		std::fclose(g_log_mirror);
-		g_log_mirror = std::fopen("SHARED:widelands/widelands.out", "a");
+		std::fclose(g_log_mirror);   /* flushes the buffer on the way out */
+		log_mirror_open("a");
 	}
 }
 #endif
@@ -148,9 +170,26 @@ public:
 
 	void log_cstring(const char* buffer) {
 		std::cout << buffer;
+		#ifndef __amigaos4__
+		std::cout.flush();
+		#else
+		/* Not flushed per line here.
+		 *
+		 * A run started from the share has PROGDIR: on the share too, so
+		 * stdout is a 9P file and the flush was a round trip to the host --
+		 * twice per log line, since do_log sends the prefix and the text
+		 * through separately. Warnings and errors still force it out (below),
+		 * log_progress() still pushes stdout across at every slow phase, and
+		 * the stream is flushed at exit. What buffering can cost is the tail
+		 * of an ordinary info log after a hard crash. */
+		log_mirror_write(buffer);
+		#endif
+	}
+
+	void flush() {
 		std::cout.flush();
 		#ifdef __amigaos4__
-		log_mirror_write(buffer);
+		std::fflush(stdout);
 		#endif
 	}
 
@@ -247,4 +286,12 @@ void do_log(const LogType type, const Time& gametime, const char* const fmt, ...
 		str.push_back('\n');
 		logger->log_cstring(str.c_str());
 	}
+#ifdef __amigaos4__
+	/* Anything that reports a problem goes out now, so a log that stops does
+	   so after the line explaining why rather than before it. Ordinary info
+	   lines ride the buffer -- see log_cstring. */
+	if (type == LogType::kWarning || type == LogType::kError) {
+		logger->flush();
+	}
+#endif
 }

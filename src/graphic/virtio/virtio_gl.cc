@@ -80,7 +80,12 @@ bool initialize_driver() {
 	   and this happens with debug logging off too, since the calls that
 	   report a stalled worker or a lost frame target always write. A string
 	   literal because the backend keeps the pointer. */
-	virtioBackendSetLogFile("PROGDIR:widelands-virtgl.log");
+	/* SHARED:, not PROGDIR:. Widelands runs from the guest's hard disk, so a
+	   log next to the binary cannot be read from the host at all -- which is
+	   exactly what happened when it hung during texture loading and the only
+	   copy in the share turned out to be a day old. The backend falls back to
+	   the leaf name in the current directory if the path cannot be opened. */
+	virtioBackendSetLogFile("SHARED:widelands/widelands-virtgl.log");
 	if (!virtioBackendOpen()) {
 		fail("cannot open PROGDIR:virtio_gpu.library or LIBS:virtio_gpu.library version 2");
 		return false;

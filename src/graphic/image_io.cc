@@ -35,6 +35,10 @@
 #include "io/filesystem/layered_filesystem.h"
 #include "io/streamwrite.h"
 
+#ifdef WL_AMIGAOS4_VIRTIO_GL
+#include <proto/exec.h>
+#endif
+
 namespace {
 
 // A helper function for save_to_png. Writes the compressed data to
@@ -123,13 +127,18 @@ std::unique_ptr<Texture> load_image(const std::string& fname, FileSystem* fs) {
 }
 
 SDL_Surface* load_image_as_sdl_surface(const std::string& fname, FileSystem* fs) {
-	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA IMAGE CHECKPOINT: before IMG_Init for %s", fname.c_str());
-	#endif
+	/* log_checkpoint, not log_info.
+	 *
+	 * These were written as startup checkpoints, on the reasoning in log.h
+	 * that a line which runs once costs nothing. They do not run once: this
+	 * is the per-image path, and loading a tribe is ~1200 images, so the five
+	 * lines below are ~6000 -- each one formatting a filename and, through
+	 * log_mirror_write, crossing to the host. They stay available under
+	 * -DWL_AMIGAOS4_CHECKPOINTS, where the rest of the per-item tracing
+	 * already lives. */
+	log_checkpoint("AMIGA IMAGE CHECKPOINT: before IMG_Init for %s", fname.c_str());
 	ensure_sdl_image_is_initialized();
-	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA IMAGE CHECKPOINT: after IMG_Init for %s", fname.c_str());
-	#endif
+	log_checkpoint("AMIGA IMAGE CHECKPOINT: after IMG_Init for %s", fname.c_str());
 
 	FileRead fr;
 	bool found;
@@ -142,18 +151,37 @@ SDL_Surface* load_image_as_sdl_surface(const std::string& fname, FileSystem* fs)
 	if (!found) {
 		throw ImageNotFound(fname);
 	}
-	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA IMAGE CHECKPOINT: file loaded for %s (%u bytes)", fname.c_str(),
-	         static_cast<unsigned>(fr.get_size()));
-	log_info("AMIGA IMAGE CHECKPOINT: before IMG_Load_RW for %s", fname.c_str());
-	#endif
+	log_checkpoint("AMIGA IMAGE CHECKPOINT: file loaded for %s (%u bytes)", fname.c_str(),
+	               static_cast<unsigned>(fr.get_size()));
+	log_checkpoint("AMIGA IMAGE CHECKPOINT: before IMG_Load_RW for %s", fname.c_str());
 
 	SDL_Surface* sdlsurf = IMG_Load_RW(SDL_RWFromMem(fr.data(0), fr.get_size()), 1);
 	if (sdlsurf == nullptr) {
 		throw ImageLoadingError(fname, IMG_GetError());
 	}
 	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA IMAGE CHECKPOINT: after IMG_Load_RW for %s", fname.c_str());
+	log_checkpoint("AMIGA IMAGE CHECKPOINT: after IMG_Load_RW for %s", fname.c_str());
+	/* Free memory every hundredth image.
+	 *
+	 * Loading a tribe is ~1200 images, each becoming a texture whose pixels
+	 * this port also keeps a client-side copy of so a session rebuild can
+	 * re-upload them. When the load stopped dead at image 940 there was no
+	 * crash and no message -- and that is exactly what running out of memory
+	 * looks like on this system: Exec stops answering in time and everything
+	 * appears frozen. A figure that falls steadily to nothing settles it;
+	 * one that stays high rules it out and sends me to the texture append
+	 * instead. Through log_progress so it survives the 9P handler's
+	 * buffering, which is the whole reason a hang shows as a log that simply
+	 * stops. */
+	{
+		static unsigned loaded = 0;
+		if (++loaded % 100U == 0U)
+			log_progress("AMIGA IMAGE MEMORY: %u images, %lu KB free, "
+			             "%lu KB largest",
+			             loaded,
+			             (unsigned long)IExec->AvailMem(MEMF_ANY) / 1024UL,
+			             (unsigned long)IExec->AvailMem(MEMF_LARGEST) / 1024UL);
+	}
 	#endif
 	return sdlsurf;
 }
