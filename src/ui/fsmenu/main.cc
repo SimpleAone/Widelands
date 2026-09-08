@@ -288,13 +288,28 @@ MainMenu::MainMenu(const bool skip_init)
 	r_about_.open_window = [this]() { new About(*this, r_about_); };
 	r_addons_.open_window = [this]() { new AddOnsUI::AddOnsCtrl(*this, r_about_); };
 
+	/* The tail of this constructor is 40 of the 78 seconds it takes to reach
+	   the main menu, and until now it reported nothing at all: the last line
+	   before it is update_template() scaling logo.png, the next is "after
+	   MainMenu". Five candidates in there, and they want completely
+	   different fixes -- set_labels() renders every label to a texture of
+	   its own and pulls in the gettext catalogue on first use, reinit_plugins()
+	   starts a Lua interpreter, layout() walks the whole panel tree. These
+	   run once, so log_info is right here; the per-image checkpoints that
+	   went to log_checkpoint did not. */
+	log_info("AMIGA MAINMENU TIMING: constructor tail, before focus");
 	focus();
+	log_info("AMIGA MAINMENU TIMING: after focus, before set_labels");
 	set_labels();
+	log_info("AMIGA MAINMENU TIMING: after set_labels, before layout");
 	layout();
+	log_info("AMIGA MAINMENU TIMING: after layout, before initialization_complete");
 
 	initialization_complete();
+	log_info("AMIGA MAINMENU TIMING: after initialization_complete, before reinit_plugins");
 
 	reinit_plugins();
+	log_info("AMIGA MAINMENU TIMING: after reinit_plugins, constructor done");
 }
 
 void MainMenu::main_loop() {
@@ -358,10 +373,13 @@ void MainMenu::update_template() {
 
 	title_image_ = g_image_cache->get("loadscreens/logo.png");
 
+	log_info("AMIGA MAINMENU TIMING: template logo ready, before list_directory");
 	images_.clear();
 	for (const std::string& img : g_fs->list_directory(template_dir() + "loadscreens/mainmenu")) {
 		images_.push_back(img);
 	}
+	log_info("AMIGA MAINMENU TIMING: list_directory gave %u backgrounds",
+	         static_cast<unsigned>(images_.size()));
 	if (images_.empty() && !is_using_default_theme()) {
 		log_warn("No main menu backgrounds found, using fallback images");
 		for (const std::string& img :
