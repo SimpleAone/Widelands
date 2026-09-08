@@ -20,6 +20,8 @@
 
 #include <memory>
 
+#include <SDL_timer.h>
+
 #include "base/log.h"
 #include "base/string.h"
 #include "graphic/graphic.h"
@@ -46,17 +48,62 @@ bool is_image(const std::string& filename) {
 // images twice because we want to make sure that some end up in the same
 // (first) texture atlas, so we add them first and we use the set to know that
 // we already added an image.
+#ifdef __amigaos4__
+/* What the walk costs, separately from what loading the images costs.
+ *
+ * Reaching the main menu spends 18s between "before rebuild_texture_atlas"
+ * and the hundredth image, and only 2.6s of that is the read, decode and
+ * upload the per-image counters already account for. The rest is either
+ * this walk or the packing that follows it, and those want completely
+ * different fixes. */
+double g_atlas_walk_ms = 0.0;
+unsigned g_atlas_walk_entries = 0;
+unsigned g_atlas_walk_dirs = 0;
+#endif
+
 void find_images(const std::string& directory,
                  std::unordered_set<std::string>* images,
                  std::vector<std::string>* ordered_images) {
-	for (const std::string& filename : g_fs->list_directory(directory)) {
-		if (g_fs->is_directory(filename)) {
-			find_images(filename, images, ordered_images);
+	#ifdef __amigaos4__
+	const Uint64 walk_begin = SDL_GetPerformanceCounter();
+	++g_atlas_walk_dirs;
+	#endif
+	const FilenameSet entries = g_fs->list_directory(directory);
+	#ifdef __amigaos4__
+	g_atlas_walk_entries += static_cast<unsigned>(entries.size());
+	g_atlas_walk_ms += static_cast<double>(SDL_GetPerformanceCounter() - walk_begin) *
+	                   1000.0 / static_cast<double>(SDL_GetPerformanceFrequency());
+	#endif
+	for (const std::string& filename : entries) {
+		/* The name first, the filesystem second.
+		 *
+		 * This used to ask is_directory() about every entry before looking
+		 * at its name, and that is a canonicalize_name and a stat() through
+		 * every layer of the filesystem, per file, over a 9P share. Nearly
+		 * every entry here is an image, and an image is not a directory, so
+		 * the question was asked thousands of times to be told "no".
+		 *
+		 * The one behaviour this changes is a directory actually named
+		 * something.png, which would previously have been recursed into and
+		 * is now taken for an image. Widelands has none, and one would be a
+		 * mistake in the data rather than something to support. */
+		if (is_image(filename)) {
+			if (images->count(filename) == 0u) {
+				images->insert(filename);
+				ordered_images->push_back(filename);
+			}
 			continue;
 		}
-		if (is_image(filename) && (images->count(filename) == 0u)) {
-			images->insert(filename);
-			ordered_images->push_back(filename);
+		#ifdef __amigaos4__
+		const Uint64 stat_begin = SDL_GetPerformanceCounter();
+		const bool directory = g_fs->is_directory(filename);
+		g_atlas_walk_ms += static_cast<double>(SDL_GetPerformanceCounter() - stat_begin) *
+		                   1000.0 / static_cast<double>(SDL_GetPerformanceFrequency());
+		if (directory) {
+		#else
+		if (g_fs->is_directory(filename)) {
+		#endif
+			find_images(filename, images, ordered_images);
 		}
 	}
 }
@@ -151,7 +198,19 @@ build_texture_atlas(const int max_size,
 		find_images(dir + "/scripting/tribes", &all_images, &first_atlas_images);
 	}
 
+	#ifdef __amigaos4__
+	log_progress("AMIGA ATLAS: walk done, %u dirs, %u entries, %.0fms in "
+	             "list_directory+is_directory; %u images to pack",
+	             g_atlas_walk_dirs, g_atlas_walk_entries, g_atlas_walk_ms,
+	             static_cast<unsigned>(first_atlas_images.size()));
+	const Uint64 pack_begin = SDL_GetPerformanceCounter();
+	#endif
 	auto first_texture_atlas = pack_images(first_atlas_images, max_size, textures_in_atlas);
+	#ifdef __amigaos4__
+	log_progress("AMIGA ATLAS: packed in %.0fms",
+	             static_cast<double>(SDL_GetPerformanceCounter() - pack_begin) *
+	                1000.0 / static_cast<double>(SDL_GetPerformanceFrequency()));
+	#endif
 	if (first_texture_atlas.size() != 1) {
 		throw wexception("Not all images that should fit in the first texture atlas did actually "
 		                 "fit. Widelands has now more images than before.");
