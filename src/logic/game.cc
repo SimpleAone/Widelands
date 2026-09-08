@@ -18,6 +18,8 @@
 
 #include "logic/game.h"
 
+#include "base/amiga_phase.h"
+
 #include <cstdlib>
 #include <memory>
 #include <string>
@@ -333,17 +335,30 @@ void Game::init_newgame(const GameSettings& settings) {
 
 	Notifications::publish(UI::NoteLoadingMessage(_("Preloading map…")));
 
+	/* Inside the step, not around it.
+	 *
+	 * The per-step timing puts 50 seconds on "Preloading map", but that step
+	 * runs until the next loading message and covers four different things:
+	 * finding a loader, reading the map header, the add-on postload, and
+	 * creating the players -- which loads a tribe each. They want different
+	 * fixes and the step boundary cannot tell them apart. */
+	AmigaPhase phase_preload("init_newgame: entered");
+
 	std::unique_ptr<MapLoader> maploader;
 	if (!settings.mapfilename.empty()) {
 		maploader = mutable_map()->get_correct_loader(settings.mapfilename);
 		assert(maploader);
+		phase_preload.mark("get_correct_loader");
 		maploader->preload_map(settings.scenario, &enabled_addons());
+		phase_preload.mark("preload_map");
 		postload_addons_before_loading();
+		phase_preload.mark("postload_addons_before_loading");
 	} else {
 		// TODO(matthiakl): Once random games support world Add-Ons, call
 		// postload_addons_before_loading() here as well
 		postload_addons();
 		did_postload_addons_before_loading_ = true;
+		phase_preload.mark("postload_addons");
 	}
 
 	std::vector<PlayerSettings> shared;
@@ -374,6 +389,7 @@ void Game::init_newgame(const GameSettings& settings) {
 		   ->add_further_starting_position(shared_num.at(n), shared.at(n).initialization_index);
 	}
 
+	phase_preload.mark("add_player loop");
 	if (!settings.mapfilename.empty()) {
 		assert(maploader);
 		maploader->load_map_complete(*this, settings.scenario ?
@@ -901,10 +917,19 @@ void Game::think() {
 void Game::cleanup_for_load() {
 	state_ = gs_notrunning;
 
+	/* 58 seconds landed on "Cleaning up for loading: Map (3/3)", which is
+	   the last message this function publishes -- so what it actually
+	   measured was everything after Map::cleanup(), and that is a handful of
+	   container clears. The cost is somewhere below, and this says where. */
+	AmigaPhase phase_cleanup("cleanup_for_load: entered");
+
 	EditorGameBase::cleanup_for_load();
+	phase_cleanup.mark("EditorGameBase::cleanup_for_load");
 
 	delete_pending_player_commands();
+	phase_cleanup.mark("delete_pending_player_commands");
 	cmdqueue().flush();
+	phase_cleanup.mark("cmdqueue flush");
 
 	trade_agreements_.clear();
 	trade_extension_proposals_.clear();

@@ -2,6 +2,7 @@ add_subdirectory(test)
 
 wl_library(base
   SRCS
+    amiga_phase.h
     format/abstract_node.h
     format/boolean_node.h
     format/common_nodes.h
