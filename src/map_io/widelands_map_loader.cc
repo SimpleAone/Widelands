@@ -18,6 +18,8 @@
 
 #include "map_io/widelands_map_loader.h"
 
+#include <SDL_timer.h>
+
 #include <memory>
 
 #include <cstdio>
@@ -83,12 +85,31 @@ int32_t WidelandsMapLoader::preload_map(bool const scenario, AddOns::AddOnsList*
 	   exactly like a hang because nothing on that path says anything.
 	   Counting them separates "slow" from "stuck", and reopening the log is
 	   what actually pushes it across: the share holds writes until close. */
-	{
+	/* Every tenth, not every one.
+	 *
+	 * log_progress() is not a log line. It flushes stdout, freopens
+	 * PROGDIR:widelands.out and closes and reopens the mirror on the share
+	 * -- two closes and two opens, and PROGDIR is itself on that share when
+	 * the game is started from it. Doing that per map put a handful of 9P
+	 * round trips in front of every one of 118 maps, so the progress report
+	 * meant to prove the preload was not stuck was part of why it was slow.
+	 *
+	 * Ten still names a map often enough to say where it stopped, and the
+	 * elapsed time says whether "slow" is uniform (the filesystem) or spiky
+	 * (one enormous map), which want different fixes. */
+	static unsigned preloaded = 0;
+	static Uint64 preload_begin = 0;
+	++preloaded;
+	if (preload_begin == 0) {
+		preload_begin = SDL_GetPerformanceCounter();
+	}
+	if (preloaded % 10U == 1U) {
 		/* fs_->get_basename(), not filename_: WidelandsMapLoader is built as
 		   MapLoader("", *m), so filename_ is empty and the counter could say
 		   how far it got but never which map it was stuck on. */
-		static unsigned preloaded = 0;
-		log_progress("AMIGA MAP PRELOAD: %u %s", ++preloaded,
+		log_progress("AMIGA MAP PRELOAD: %u after %.0fms %s", preloaded,
+		             static_cast<double>(SDL_GetPerformanceCounter() - preload_begin) *
+		                1000.0 / static_cast<double>(SDL_GetPerformanceFrequency()),
 		             fs_ != nullptr ? fs_->get_basename().c_str() : "?");
 	}
 	#endif
