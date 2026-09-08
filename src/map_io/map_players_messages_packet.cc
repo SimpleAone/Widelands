@@ -57,13 +57,23 @@ void MapPlayersMessagesPacket::read(FileSystem& fs,
 		   loop that never passes a log call, and naming the player was not
 		   enough to find it. */
 		AmigaPhase phase_messages(format("messages: player %u", static_cast<unsigned>(p)));
+		const std::string profile_filename = format(kFilenameTemplate, static_cast<unsigned int>(p));
+		phase_messages.mark("filename built");
+		/* Ask first instead of letting the load throw.
+		   Not one map ships a player/N/messages -- only savegames have them --
+		   so on the map path this always missed, and a miss cost a full walk
+		   of the zip's central directory plus a thrown-and-caught exception to
+		   report what a single lookup already knows. */
+		const bool have_file = fs.file_exists(profile_filename);
+		phase_messages.mark(have_file ? "message file found" : "no message file");
+		if (!have_file) {
+			continue;
+		}
 		Profile prof;
 		try {
-			const std::string profile_filename =
-			   format(kFilenameTemplate, static_cast<unsigned int>(p));
 			prof.read(profile_filename.c_str(), nullptr, fs);
 		} catch (...) {
-			phase_messages.mark("profile absent, skipping player");
+			phase_messages.mark("profile unreadable, skipping player");
 			continue;
 		}
 		phase_messages.mark("profile read");

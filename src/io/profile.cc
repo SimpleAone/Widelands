@@ -733,8 +733,18 @@ void Profile::read(char const* const filename, char const* const global_section,
 					// skip " or '
 					++line;
 
-					for (char* eot = line + strlen(line) - 1; *eot != '"' && *eot != '\''; --eot) {
+					/* Bounded. It used to walk backwards with no lower limit,
+					   so a multiline whose tail holds no quote at all ran off
+					   the front of the buffer zeroing whatever it passed --
+					   silent heap corruption, and only much later a crash or a
+					   spin somewhere unrelated. */
+					char* eot = line + strlen(line) - 1;
+					while (eot >= line && *eot != '"' && *eot != '\'') {
 						*eot = 0;
+						--eot;
+					}
+					if (eot < line) {
+						throw wexception("unterminated multiline string");
 					}
 					// NOTE: we leave the last '"' and do not remove them
 					tail = line;

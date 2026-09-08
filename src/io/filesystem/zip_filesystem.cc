@@ -25,6 +25,7 @@
 #include <cstring>
 #include <ctime>
 #include <memory>
+#include <vector>
 
 #include "base/string.h"
 #include "base/wexception.h"
@@ -47,6 +48,7 @@ void ZipFilesystem::ZipFile::close() {
 	} else if (state_ == State::kUnzipping) {
 		unzClose(read_handle_);
 	}
+	entries_.clear();
 	state_ = State::kIdle;
 }
 
@@ -82,6 +84,9 @@ void ZipFilesystem::ZipFile::open_for_unzip() {
 	size_t longest_prefix = 0;
 	unz_file_info file_info;
 	char filename_inzip[256];
+	/* This walk already visits every entry, so note the names on the way past
+	   and the archive gets an index for free. */
+	std::vector<std::string> raw_names;
 	for (;;) {
 		unzGetCurrentFileInfo(
 		   read_handle_, &file_info, filename_inzip, sizeof(filename_inzip), nullptr, 0, nullptr, 0);
@@ -96,6 +101,7 @@ void ZipFilesystem::ZipFile::open_for_unzip() {
 			}
 			longest_prefix = pos;
 		}
+		raw_names.emplace_back(filename_inzip);
 
 		if (unzGoToNextFile(read_handle_) == UNZ_END_OF_LIST_OF_FILE) {
 			break;
@@ -103,7 +109,23 @@ void ZipFilesystem::ZipFile::open_for_unzip() {
 	}
 	common_prefix_ = first_entry.substr(0, longest_prefix);
 
+	entries_.clear();
+	for (const std::string& raw : raw_names) {
+		std::string name = raw.substr(common_prefix_.size());
+		if (!name.empty() && name.back() == '/') {
+			name.pop_back();
+		}
+		if (!name.empty()) {
+			entries_.insert(name);
+		}
+	}
+
 	state_ = State::kUnzipping;
+}
+
+bool ZipFilesystem::ZipFile::contains(const std::string& stripped_name) {
+	open_for_unzip();
+	return entries_.count(stripped_name) > 0;
 }
 
 std::string ZipFilesystem::ZipFile::strip_basename(const std::string& filename) {
@@ -220,6 +242,16 @@ bool ZipFilesystem::file_exists(const std::string& path) const {
 	}
 
 	assert(!path_in.empty());
+
+	/* Answer a miss from the index instead of walking the whole central
+	   directory to find nothing. A hit still walks, because is_directory() and
+	   load() both read the entry this loop leaves the cursor parked on -- so
+	   the walk is not merely a lookup and cannot be replaced by one. Misses are
+	   the common case by a wide margin: every optional file the loader probes
+	   for costs one of these, and a savegame has tens of thousands of entries. */
+	if (!zip_file_->contains(path_in)) {
+		return false;
+	}
 
 	for (;;) {
 		const int32_t success =

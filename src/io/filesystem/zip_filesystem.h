@@ -20,6 +20,7 @@
 #define WL_IO_FILESYSTEM_ZIP_FILESYSTEM_H
 
 #include <memory>
+#include <set>
 
 #include <unzip.h>
 #include <zip.h>
@@ -89,6 +90,11 @@ private:
 		// minizip handle.
 		const unzFile& read_handle();
 
+		// Whether the archive holds this entry, by stripped name with no
+		// trailing slash. Answered from the index built while scanning for the
+		// common prefix, so a lookup costs nothing extra.
+		bool contains(const std::string& stripped_name);
+
 	private:
 		// Closes 'path_' and reopens it for unzipping (read).
 		void open_for_unzip();
@@ -98,6 +104,10 @@ private:
 
 		// Closes 'path_' if it is opened.
 		void close();
+
+		// Every entry, stripped of the common prefix and of any trailing
+		// slash. Rebuilt by open_for_unzip(), dropped by close().
+		std::set<std::string> entries_;
 
 		State state_{State::kIdle};
 

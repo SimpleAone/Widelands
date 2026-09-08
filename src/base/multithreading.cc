@@ -18,6 +18,8 @@
 
 #include "base/multithreading.h"
 
+#include <cstdio>
+
 #include <atomic>
 #include <iostream>
 #include <map>
@@ -377,6 +379,16 @@ MutexLock::MutexLock(const ID i) : id_(i) {
 				log_progress("AMIGA MUTEX: %s waiting %u ms for %s%s", thread_name(self).c_str(),
 				             now - start_time, to_string(id_).c_str(),
 				             record.current_owner == self ? " -- WHICH IT ALREADY OWNS" : "");
+			} else {
+				/* Straight to stderr, not through the logger: the logger takes
+				   this very mutex, so reporting a wait on it through log_progress
+				   would block here forever. Leaving it unreported instead made a
+				   deadlock on Log the one hang in the game that produces no
+				   output whatsoever -- exactly the case worth naming. */
+				std::fprintf(stderr, "AMIGA MUTEX: %s waiting %u ms for Log%s\n",
+				             thread_name(self).c_str(), now - start_time,
+				             record.current_owner == self ? " -- WHICH IT ALREADY OWNS" : "");
+				std::fflush(stderr);
 			}
 			#endif
 			if (id_ != ID::kLog) {
