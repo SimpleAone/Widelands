@@ -261,18 +261,20 @@ void glBindBuffer(GLenum target, GLuint buffer) {
  * on change, so the once-a-frame rebind of framebuffer 0 costs nothing. */
 GLuint current_render_target = 0;
 
-/* Render-to-texture, off by default.
+/* Render-to-texture, on by default.
  *
- * It works in the sense that the draws reach the texture, but Widelands uses
- * framebuffer objects far more widely than the map preview this was written
- * for -- Texture::fill_rect and blits into a texture go through them too --
- * and a single missed switch sends screen drawing into a texture instead.
- * That showed as menu buttons appearing and then vanishing.
+ * It used to default to off because Widelands uses framebuffer objects far
+ * more widely than the map preview this was written for, and a missed switch
+ * sends screen drawing into a texture -- menu buttons appearing and then
+ * vanishing. But off is not the safe choice it looked like. Text is composed
+ * by blitting glyphs into a texture (rt_render.cc) and the texture atlas is
+ * built the same way, so with this off both of those draw onto the screen
+ * instead and leave their textures empty: game tips came out as words
+ * scattered across the screen, and every checkbox and icon was blank.
  *
- * Until every path is accounted for, the honest default is the old
- * behaviour: those draws go to the screen and are painted over, which loses
- * the map preview and nothing else.
- *     setenv widelands_rtt 1
+ * Neither state is finished, but this one is the one that renders text
+ * correctly, so it is the honest default and the one worth debugging.
+ *     setenv widelands_rtt 0
  */
 bool render_to_texture_enabled() {
 	static int enabled = -1;
@@ -281,7 +283,7 @@ bool render_to_texture_enabled() {
 		if (value == nullptr || value[0] == '\0') {
 			value = std::getenv("widelands_rtt");
 		}
-		enabled = value != nullptr && value[0] != '\0' && std::strcmp(value, "0") != 0;
+		enabled = value == nullptr || value[0] == '\0' || std::strcmp(value, "0") != 0;
 		log_info("VirtIO GL: render-to-texture %s", enabled != 0 ? "ON" : "off");
 	}
 	return enabled != 0;
