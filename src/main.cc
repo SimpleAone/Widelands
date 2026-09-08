@@ -16,11 +16,9 @@
  *
  */
 
-#include <chrono>
 #include <iostream>
 #include <cstdio>
-#include <stdexcept>
-#include <string>
+#include <cstring>
 #include <sstream>
 #include <typeinfo>
 
@@ -182,6 +180,78 @@ static const char* const kStackCookie __attribute__((used)) = "$STACK:2097152";
 /**
  * Cross-platform entry point for SDL applications.
  */
+#ifdef __amigaos4__
+/* Give the unwinder its tables. Without this, no throw in this program can
+ * ever return, and that is not a figure of speech.
+ *
+ * _Unwind_Find_FDE in this toolchain is the registry version: it locks a mutex
+ * and searches seen_objects/unseen_objects. Normally crtbegin's frame_dummy
+ * fills that list at startup by calling __register_frame_info. This crt has no
+ * frame_dummy and no __EH_FRAME_BEGIN__ -- nm finds neither, and .ctors holds
+ * nothing but its terminators -- so the list stays empty for the life of the
+ * process and not one FDE is ever found. Every throw died on the spot, with no
+ * message, and it looked like a hang only because the VirtGL worker keeps
+ * running after the main thread is gone. Both "load hangs" were this.
+ *
+ * The tables themselves were always fine: .eh_frame_hdr decodes to version 1,
+ * pcrel|sdata4, and an eh_frame_ptr landing exactly on .eh_frame. So decode it
+ * and hand it over.
+ */
+extern "C" void __register_frame_info(const void* begin, void* ob);
+
+/* Placed at the start of .eh_frame_hdr by the linker script. Nothing in libgcc
+   references it, which is the whole problem. */
+extern "C" const unsigned char __GNU_EH_FRAME_HDR[];
+
+/* struct object is private to libgcc -- seven pointers and a word. Oversized on
+   purpose, and static because the unwinder keeps the pointer for good. */
+static long long amiga_eh_object[16];
+
+/* The terminator crtend normally supplies, and the other half of the bug.
+ *
+ * libgcc walks the FDE chain until it meets a zero length word, and this
+ * .eh_frame ends in the middle of its last FDE. Registering without this made
+ * the walk run off the end, read whatever followed as a CIE and die in strlen
+ * on the augmentation string. On AmigaOS4 that is certain rather than likely:
+ * ElfLoadSeg gives every section its own allocation, so past the end is not
+ * zero padding, it is nothing at all.
+ *
+ * The linker script lays it out as
+ *     .eh_frame : ONLY_IF_RO { KEEP (*(.eh_frame)) *(.eh_frame.*) }
+ * so a .eh_frame.<suffix> section lands after every ordinary contribution
+ * whatever the link order -- which is where these four bytes have to be. */
+__attribute__((used, section(".eh_frame.zzz_terminator"), aligned(4)))
+static const unsigned char amiga_eh_frame_terminator[4] = {0, 0, 0, 0};
+
+/* Also a constructor, so a throw during static initialisation is covered too;
+   main() calls it as well and the second call does nothing. */
+__attribute__((constructor(101))) static void amiga_register_eh_frame() {
+	static bool done = false;
+	if (done) {
+		return;
+	}
+	const unsigned char* hdr = __GNU_EH_FRAME_HDR;
+	if (hdr[0] != 1) {
+		return;  // unknown header version; leave things as they were
+	}
+	const unsigned char* p = hdr + 4;
+	const void* frame = nullptr;
+	if (hdr[1] == 0x1b) {  // DW_EH_PE_pcrel | DW_EH_PE_sdata4
+		int offset;
+		std::memcpy(&offset, p, sizeof offset);
+		frame = p + offset;
+	} else if (hdr[1] == 0x03) {  // DW_EH_PE_udata4, absolute
+		unsigned address;
+		std::memcpy(&address, p, sizeof address);
+		frame = reinterpret_cast<const void*>(static_cast<unsigned long>(address));
+	} else {
+		return;  // unexpected encoding; do not hand libgcc a wrong pointer
+	}
+	__register_frame_info(frame, amiga_eh_object);
+	done = true;
+}
+#endif
+
 int main(int argc, char* argv[]) {
 #ifdef WL_AMIGAOS4_VIRTIO_GL
 	/* Beside the program, not on the share. SHARED: is not mounted when
@@ -199,74 +269,7 @@ int main(int argc, char* argv[]) {
 	std::cout << "This is Widelands version " << build_ver_details() << std::endl;
 
 #ifdef __amigaos4__
-	/* Which of the two does a failed load hang on?
-	 *
-	 * Two load hangs have now landed on the same shape: a file that is not
-	 * there, asked for through RealFSImpl::load, which for a miss does exactly
-	 * two things that the healthy fs.file_exists() path does not -- fopen() a
-	 * name that does not exist, and throw. Both hangs went away the moment the
-	 * call was replaced by file_exists(), which answers the same question by
-	 * stat() in 8ms. Guessing between the two has cost two build-and-load
-	 * rounds, so measure them.
-	 *
-	 * Every line is forced onto disk before the next step runs. stdout here is
-	 * a file on the 9P share, and that handler holds writes until the file is
-	 * closed -- a flush alone leaves the line invisible from the host, which
-	 * is why log_progress() closes and reopens. Without this, a probe that
-	 * hangs looks exactly like a program that never started.
-	 *
-	 * fopen goes first so that its numbers survive even if the throw is the
-	 * one that never returns, and each probe announces itself beforehand so
-	 * silence still names the culprit. Three times each: the first throw is
-	 * the one that builds the unwinder's lookup table. */
-	{
-		/* Its own file on the share, closed after every line.
-		 *
-		 * PROGDIR:widelands.out is no good here: PROGDIR: is wherever the game
-		 * was started from, which is not necessarily the share, and the copy
-		 * that is on the share is opened by the logger on its first line --
-		 * which is after all of this. So a probe that hangs leaves the share
-		 * holding the previous run's log, untouched, and that is exactly what
-		 * it looked like. Closing per line is what makes a line visible
-		 * through the 9P handler at all. */
-		bool probe_first = true;
-		auto probe_say = [&probe_first](const std::string& text) {
-			std::cout << "AMIGA PROBE: " << text << std::endl;
-			if (FILE* f = std::fopen("SHARED:widelands/probe.txt", probe_first ? "w" : "a");
-			    f != nullptr) {
-				std::fputs(text.c_str(), f);
-				std::fputc('\n', f);
-				std::fclose(f);
-				probe_first = false;
-			}
-		};
-		auto probe_ms = [](const std::chrono::steady_clock::time_point& from) {
-			return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - from)
-			   .count();
-		};
-
-		for (int probe = 1; probe <= 3; ++probe) {
-			probe_say("fopen " + std::to_string(probe) + ": opening a file that does not exist");
-			const auto started = std::chrono::steady_clock::now();
-			FILE* missing = std::fopen("PROGDIR:this-file-does-not-exist", "rb");
-			const double took = probe_ms(started);
-			if (missing != nullptr) {
-				std::fclose(missing);
-			}
-			probe_say("fopen " + std::to_string(probe) + ": took " + std::to_string(took) + " ms");
-		}
-
-		for (int probe = 1; probe <= 3; ++probe) {
-			probe_say("throw " + std::to_string(probe) + ": about to throw");
-			const auto started = std::chrono::steady_clock::now();
-			try {
-				throw std::runtime_error("exception probe");
-			} catch (const std::exception&) {
-			}
-			const double took = probe_ms(started);
-			probe_say("throw " + std::to_string(probe) + ": took " + std::to_string(took) + " ms");
-		}
-	}
+	amiga_register_eh_frame();
 #endif
 
 #if defined(PRINT_SEGFAULT_BACKTRACE) && !defined(__amigaos4__)
