@@ -57,12 +57,18 @@
 struct FileSystemPath : public std::string {
 	bool exists_;
 	bool is_directory_;
+	/* The size the same stat() already reported. load() used to get this by
+	   seeking to the end of the open file and asking where it was -- three
+	   more stdio calls, and on a network filesystem three more round trips,
+	   for a number that was sitting in st_mode's struct all along. */
+	size_t size_;
 
 	explicit FileSystemPath(const std::string& path) : std::string(path) {
 		struct stat st;
 
 		exists_ = (stat(c_str(), &st) != -1);
 		is_directory_ = exists_ && S_ISDIR(st.st_mode);
+		size_ = exists_ && !is_directory_ ? static_cast<size_t>(st.st_size) : 0;
 	}
 };
 
@@ -371,7 +377,17 @@ void RealFSImpl::make_directory(const std::string& dirname) {
  */
 void* RealFSImpl::load(const std::string& fname, size_t& length) {
 	const std::string fullname = canonicalize_name(fname);
-	if (is_directory(fullname)) {
+	/* One stat, giving both the answers this function needs.
+	 *
+	 * It used to call is_directory(fullname), which canonicalises an already
+	 * canonical path all over again and stats it -- and then determine the
+	 * size by seeking to the end of the open file and asking where it was.
+	 * Loading a tribe is ~1200 images and the layer above has already
+	 * stat()ed each one to find which filesystem holds it, so on a 9P share
+	 * that was three round trips and a seek dance per file for one file's
+	 * worth of data. */
+	const FileSystemPath fspath(fullname);
+	if (fspath.is_directory_) {
 		throw FileTypeError("RealFSImpl::load", fullname, "path is a directory");
 	}
 
@@ -384,20 +400,7 @@ void* RealFSImpl::load(const std::string& fname, size_t& length) {
 			throw FileError("RealFSImpl::load", fullname, "could not open file for reading");
 		}
 
-		// determine the size of the file (rather quirky, but it doesn't require
-		// potentially unportable functions)
-		fseek(file, 0, SEEK_END);
-		size_t size;
-		{
-			const int32_t ftell_pos = ftell(file);
-			if (ftell_pos < 0) {
-				throw wexception("RealFSImpl::load: error when loading \"%s\" (\"%s\"): file "
-				                 "size calculation yielded negative value %i",
-				                 fname.c_str(), fullname.c_str(), ftell_pos);
-			}
-			size = ftell_pos;
-		}
-		fseek(file, 0, SEEK_SET);
+		const size_t size = fspath.size_;
 
 		// allocate a buffer and read the entire file into it
 		data = malloc(size + 1);  //  TODO(unknown): memory leak!
