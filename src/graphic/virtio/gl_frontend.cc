@@ -682,8 +682,17 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 
 		case ProgramKind::kDrawLine:
 			/* The alpha attribute is a distance across the line, shaped by
-			   pow(cos(a * PI/2), 1.5) into the soft edge. Per vertex is exact
-			   here: it is a function of the attribute, not of the fragment. */
+			   pow(cos(a * PI/2), 1.5) into the soft edge.
+			 *
+			 * This used to claim it was exact, "a function of the attribute,
+			 * not of the fragment". That is the wrong test: the attribute is
+			 * interpolated, and shaping it per vertex gives lerp(f(a), f(b))
+			 * where the shader computes f(lerp(a, b)). Those agree only for
+			 * an affine f, and pow(cos(x)) is not. A line is two or three
+			 * pixels across, so the edge comes out slightly harder or softer
+			 * rather than wrong -- but it is an approximation, like the
+			 * terrain fract() and the monochrome blit, and all three are
+			 * approximations for the same reason: no per-fragment maths. */
 			if (colour != nullptr) {
 				read_attrib(*colour, vertex, rgba, 4);
 				rgba[3] = std::pow(std::cos(rgba[3] * 3.14159265f / 2.0f), 1.5f);
