@@ -220,10 +220,25 @@ int main(int argc, char* argv[]) {
 	 * silence still names the culprit. Three times each: the first throw is
 	 * the one that builds the unwinder's lookup table. */
 	{
-		auto probe_say = [](const std::string& text) {
+		/* Its own file on the share, closed after every line.
+		 *
+		 * PROGDIR:widelands.out is no good here: PROGDIR: is wherever the game
+		 * was started from, which is not necessarily the share, and the copy
+		 * that is on the share is opened by the logger on its first line --
+		 * which is after all of this. So a probe that hangs leaves the share
+		 * holding the previous run's log, untouched, and that is exactly what
+		 * it looked like. Closing per line is what makes a line visible
+		 * through the 9P handler at all. */
+		bool probe_first = true;
+		auto probe_say = [&probe_first](const std::string& text) {
 			std::cout << "AMIGA PROBE: " << text << std::endl;
-			std::fflush(stdout);
-			std::freopen("PROGDIR:widelands.out", "a", stdout);
+			if (FILE* f = std::fopen("SHARED:widelands/probe.txt", probe_first ? "w" : "a");
+			    f != nullptr) {
+				std::fputs(text.c_str(), f);
+				std::fputc('\n', f);
+				std::fclose(f);
+				probe_first = false;
+			}
 		};
 		auto probe_ms = [](const std::chrono::steady_clock::time_point& from) {
 			return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - from)
