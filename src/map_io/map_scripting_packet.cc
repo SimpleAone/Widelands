@@ -97,7 +97,15 @@ void MapScriptingPacket::read(FileSystem& fs,
 	// wise this makes no sense.
 	AmigaPhase phase("scripting packet");
 	FileRead fr;
-	const bool have_dump = egbase.is_game() && fr.try_open(fs, "scripting/globals.dump");
+	/* Ask before opening. try_open() reports a missing file by letting
+	   ZipFilesystem::load throw and swallowing it, and only a savegame has a
+	   globals.dump, so on the map path that throw is certain. The messages
+	   packet stopped on the same construction and came back to life the moment
+	   the throw was avoided. Splitting it also says which half is at fault:
+	   reaching "globals.dump absent" means the lookup is healthy. */
+	const bool dump_present = egbase.is_game() && fs.file_exists("scripting/globals.dump");
+	phase.mark(dump_present ? "globals.dump present" : "globals.dump absent");
+	const bool have_dump = dump_present && fr.try_open(fs, "scripting/globals.dump");
 	phase.mark(have_dump ? "globals.dump opened" : "no globals.dump");
 	if (have_dump) {
 		try {

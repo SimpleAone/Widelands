@@ -16,8 +16,10 @@
  *
  */
 
+#include <chrono>
 #include <iostream>
 #include <cstdio>
+#include <stdexcept>
 #include <sstream>
 #include <typeinfo>
 
@@ -194,6 +196,57 @@ int main(int argc, char* argv[]) {
 	          << WL_AMIGAOS4_VER_DATE << ')' << std::endl;
 #endif
 	std::cout << "This is Widelands version " << build_ver_details() << std::endl;
+
+#ifdef __amigaos4__
+	/* How expensive is throwing?
+	 *
+	 * Two separate load hangs have now landed on the same shape: a file that
+	 * is not in the map's zip, whose absence ZipFilesystem::load reports by
+	 * throwing, and the throw is the last thing that happens. The messages
+	 * packet stopped there and started working the moment the throw was
+	 * avoided; the scripting packet stops on the identical line.
+	 *
+	 * That is either a coincidence twice over or exception dispatch is the
+	 * problem, and guessing has cost two build-and-load rounds already. The
+	 * binary carries a .eh_frame_hdr, so the unwinder should be doing a binary
+	 * search over ~23000 FDEs -- but only if it finds the header. If it falls
+	 * back to a linear scan this says so immediately, and the first throw is
+	 * timed separately because that is the one that builds the lookup table.
+	 */
+	for (int probe = 1; probe <= 3; ++probe) {
+		const auto probe_start = std::chrono::steady_clock::now();
+		try {
+			throw std::runtime_error("exception probe");
+		} catch (const std::exception&) {
+		}
+		const double probe_ms =
+		   std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - probe_start)
+		      .count();
+		std::cout << "AMIGA EXCEPTION PROBE: throw " << probe << " took " << probe_ms << " ms"
+		          << std::endl;
+	}
+
+	/* And the other half of that shape.
+	 *
+	 * A .wmf map is a plain directory here, not a zip, so the load that hangs
+	 * is RealFSImpl::load -- and for a file that is not there it does exactly
+	 * two things the healthy file_exists() path does not: fopen() a missing
+	 * name, and throw. file_exists() answers the same question by stat() in
+	 * 8ms, so the difference is one of these two. This times the other one,
+	 * against the same 9P share the maps live on. */
+	for (int probe = 1; probe <= 3; ++probe) {
+		const auto probe_start = std::chrono::steady_clock::now();
+		FILE* missing = std::fopen("PROGDIR:this-file-does-not-exist", "rb");
+		const double probe_ms =
+		   std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - probe_start)
+		      .count();
+		if (missing != nullptr) {
+			std::fclose(missing);
+		}
+		std::cout << "AMIGA FOPEN PROBE: missing file " << probe << " took " << probe_ms << " ms"
+		          << std::endl;
+	}
+#endif
 
 #if defined(PRINT_SEGFAULT_BACKTRACE) && !defined(__amigaos4__)
 	/* Handle several types of fatal crashes with a useful backtrace on supporting systems.
