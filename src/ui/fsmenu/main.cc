@@ -298,6 +298,12 @@ MainMenu::MainMenu(const bool skip_init)
 	   run once, so log_info is right here; the per-image checkpoints that
 	   went to log_checkpoint did not. */
 	log_info("AMIGA MAINMENU TIMING: constructor tail, before focus");
+	/* set_labels() is 41 of the 83 seconds to the main menu, and the two
+	   candidates inside it want entirely different fixes: every dropdown
+	   entry renders its text into a texture of its own, and
+	   newest_saved_game_or_replay() builds a whole Widelands::Game to decide
+	   whether a "Continue Playing" entry belongs there. The checkpoint above
+	   that call, and this one, say which. */
 	focus();
 	log_info("AMIGA MAINMENU TIMING: after focus, before set_labels");
 	set_labels();
@@ -446,9 +452,12 @@ void MainMenu::set_labels() {
 
 	// Refresh the Continue tooltip. The SavegameData must be reloaded after
 	// every language switch because it contains localized strings.
+	log_info("AMIGA MAINMENU TIMING: labels, before newest_saved_game_or_replay");
 	{
 		filename_for_continue_playing_ = "";
 		std::optional<SavegameData> newest_singleplayer = newest_saved_game_or_replay();
+		log_info("AMIGA MAINMENU TIMING: after newest_saved_game_or_replay (%s)",
+		         newest_singleplayer.has_value() ? "found one" : "none");
 		if (newest_singleplayer.has_value()) {
 			filename_for_continue_playing_ = newest_singleplayer->filename;
 			singleplayer_.add(

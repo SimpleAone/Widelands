@@ -249,6 +249,21 @@ bool EverythingLoader::is_valid_gametype(const SavegameData& /*gamedata*/) const
 }
 
 std::optional<SavegameData> newest_saved_game_or_replay(bool find_replay) {
+	/* Look before building a Game.
+	 *
+	 * This is called from MainMenu::set_labels(), only to decide whether the
+	 * menu gets a "Continue Playing" entry -- and constructing a
+	 * Widelands::Game builds the world and every tribe description first.
+	 * On AmigaOS that measured as 41 of the 83 seconds it takes to reach the
+	 * main menu, half the startup, and with an empty save directory every
+	 * bit of it was wasted: there was nothing to be newest.
+	 *
+	 * Listing a directory is one call. Doing it first costs nothing when
+	 * there are saves and skips the whole construction when there are not. */
+	if (g_fs->list_directory(find_replay ? kReplayDir : kSaveDir).empty()) {
+		return std::nullopt;
+	}
+
 	std::unique_ptr<Widelands::Game> game = nullptr;
 	try {
 		game.reset(new Widelands::Game());
