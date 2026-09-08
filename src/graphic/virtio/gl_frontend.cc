@@ -306,6 +306,22 @@ void sync_render_target() {
 			height = static_cast<unsigned>(found->second.height);
 		}
 	}
+	/* The whole decision, for the first calls of the run.
+	 *
+	 * Not one TARGET reached the backend on the last run even with this
+	 * enabled, so the switch is being decided against here rather than
+	 * getting lost further down. Every input that goes into it, and the
+	 * verdict, so the reason is on the record instead of inferred. */
+	static unsigned decisions = 0;
+	const unsigned decision = decisions++;
+	if (decision < 40U || (decision % 512U) == 0U) {
+		log_info("AMIGA RTT #%u: fb=%u colour_texture=%u known=%d %ux%u current=%u -> %s",
+		         decision, bound_framebuffer,
+		         bound_framebuffer != 0 ? framebuffers[bound_framebuffer].colour_texture : 0U,
+		         texture != 0 ? 1 : 0, width, height, current_render_target,
+		         texture == current_render_target ? "unchanged, nothing sent" :
+		                                            (texture != 0 ? "texture" : "SCREEN"));
+	}
 	if (texture == current_render_target) {
 		return;
 	}
