@@ -20,6 +20,7 @@
 #include <iostream>
 #include <cstdio>
 #include <stdexcept>
+#include <string>
 #include <sstream>
 #include <typeinfo>
 
@@ -198,53 +199,58 @@ int main(int argc, char* argv[]) {
 	std::cout << "This is Widelands version " << build_ver_details() << std::endl;
 
 #ifdef __amigaos4__
-	/* How expensive is throwing?
+	/* Which of the two does a failed load hang on?
 	 *
-	 * Two separate load hangs have now landed on the same shape: a file that
-	 * is not in the map's zip, whose absence ZipFilesystem::load reports by
-	 * throwing, and the throw is the last thing that happens. The messages
-	 * packet stopped there and started working the moment the throw was
-	 * avoided; the scripting packet stops on the identical line.
+	 * Two load hangs have now landed on the same shape: a file that is not
+	 * there, asked for through RealFSImpl::load, which for a miss does exactly
+	 * two things that the healthy fs.file_exists() path does not -- fopen() a
+	 * name that does not exist, and throw. Both hangs went away the moment the
+	 * call was replaced by file_exists(), which answers the same question by
+	 * stat() in 8ms. Guessing between the two has cost two build-and-load
+	 * rounds, so measure them.
 	 *
-	 * That is either a coincidence twice over or exception dispatch is the
-	 * problem, and guessing has cost two build-and-load rounds already. The
-	 * binary carries a .eh_frame_hdr, so the unwinder should be doing a binary
-	 * search over ~23000 FDEs -- but only if it finds the header. If it falls
-	 * back to a linear scan this says so immediately, and the first throw is
-	 * timed separately because that is the one that builds the lookup table.
-	 */
-	for (int probe = 1; probe <= 3; ++probe) {
-		const auto probe_start = std::chrono::steady_clock::now();
-		try {
-			throw std::runtime_error("exception probe");
-		} catch (const std::exception&) {
-		}
-		const double probe_ms =
-		   std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - probe_start)
-		      .count();
-		std::cout << "AMIGA EXCEPTION PROBE: throw " << probe << " took " << probe_ms << " ms"
-		          << std::endl;
-	}
+	 * Every line is forced onto disk before the next step runs. stdout here is
+	 * a file on the 9P share, and that handler holds writes until the file is
+	 * closed -- a flush alone leaves the line invisible from the host, which
+	 * is why log_progress() closes and reopens. Without this, a probe that
+	 * hangs looks exactly like a program that never started.
+	 *
+	 * fopen goes first so that its numbers survive even if the throw is the
+	 * one that never returns, and each probe announces itself beforehand so
+	 * silence still names the culprit. Three times each: the first throw is
+	 * the one that builds the unwinder's lookup table. */
+	{
+		auto probe_say = [](const std::string& text) {
+			std::cout << "AMIGA PROBE: " << text << std::endl;
+			std::fflush(stdout);
+			std::freopen("PROGDIR:widelands.out", "a", stdout);
+		};
+		auto probe_ms = [](const std::chrono::steady_clock::time_point& from) {
+			return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - from)
+			   .count();
+		};
 
-	/* And the other half of that shape.
-	 *
-	 * A .wmf map is a plain directory here, not a zip, so the load that hangs
-	 * is RealFSImpl::load -- and for a file that is not there it does exactly
-	 * two things the healthy file_exists() path does not: fopen() a missing
-	 * name, and throw. file_exists() answers the same question by stat() in
-	 * 8ms, so the difference is one of these two. This times the other one,
-	 * against the same 9P share the maps live on. */
-	for (int probe = 1; probe <= 3; ++probe) {
-		const auto probe_start = std::chrono::steady_clock::now();
-		FILE* missing = std::fopen("PROGDIR:this-file-does-not-exist", "rb");
-		const double probe_ms =
-		   std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - probe_start)
-		      .count();
-		if (missing != nullptr) {
-			std::fclose(missing);
+		for (int probe = 1; probe <= 3; ++probe) {
+			probe_say("fopen " + std::to_string(probe) + ": opening a file that does not exist");
+			const auto started = std::chrono::steady_clock::now();
+			FILE* missing = std::fopen("PROGDIR:this-file-does-not-exist", "rb");
+			const double took = probe_ms(started);
+			if (missing != nullptr) {
+				std::fclose(missing);
+			}
+			probe_say("fopen " + std::to_string(probe) + ": took " + std::to_string(took) + " ms");
 		}
-		std::cout << "AMIGA FOPEN PROBE: missing file " << probe << " took " << probe_ms << " ms"
-		          << std::endl;
+
+		for (int probe = 1; probe <= 3; ++probe) {
+			probe_say("throw " + std::to_string(probe) + ": about to throw");
+			const auto started = std::chrono::steady_clock::now();
+			try {
+				throw std::runtime_error("exception probe");
+			} catch (const std::exception&) {
+			}
+			const double took = probe_ms(started);
+			probe_say("throw " + std::to_string(probe) + ": took " + std::to_string(took) + " ms");
+		}
 	}
 #endif
 
