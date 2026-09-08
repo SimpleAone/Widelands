@@ -21,6 +21,7 @@
 #include <cassert>
 #include <memory>
 
+#include "base/amiga_phase.h"
 #include "base/log.h"
 #include "io/profile.h"
 #include "logic/game_data_error.h"
@@ -48,21 +49,26 @@ void MapPlayersMessagesPacket::read(FileSystem& fs,
 	Extent const extent = map.extent();
 	PlayerNumber const nr_players = map.get_nrplayers();
 	iterate_players_existing(p, nr_players, egbase, player) try {
-		#ifdef __amigaos4__
-		/* Step 18 of 24 is where a scenario load went quiet, with step 19
-		   never announced -- so it is inside this packet, and there was no
-		   way to see which player it was on. */
-		log_progress("AMIGA MESSAGES: player %u", static_cast<unsigned>(p));
-		#endif
+		/* Two runs stopped here, at the same place both times: this line
+		   printed, and then nothing at all -- step 19 never announced, the
+		   "messages packet done" checkpoint just past this packet never
+		   reached, 100% CPU and no output for twenty minutes. No AMIGA MUTEX
+		   line either, so it is not waiting on a lock. Somewhere in here is a
+		   loop that never passes a log call, and naming the player was not
+		   enough to find it. */
+		AmigaPhase phase_messages(format("messages: player %u", static_cast<unsigned>(p)));
 		Profile prof;
 		try {
 			const std::string profile_filename =
 			   format(kFilenameTemplate, static_cast<unsigned int>(p));
 			prof.read(profile_filename.c_str(), nullptr, fs);
 		} catch (...) {
+			phase_messages.mark("profile absent, skipping player");
 			continue;
 		}
+		phase_messages.mark("profile read");
 		uint32_t packet_version = prof.get_safe_section("global").get_positive("packet_version");
+		phase_messages.mark("packet_version");
 		// Compatibility for all packet versions must be kept indefinitely for map loading!
 		// Some older map files contain player message packets.
 		if (1 <= packet_version && packet_version <= kCurrentPacketVersion) {
@@ -70,8 +76,14 @@ void MapPlayersMessagesPacket::read(FileSystem& fs,
 			std::vector<Message> game_loading_messages;
 
 			if (!messages->empty()) {
+				phase_messages.mark("queue not empty, taking kMessages");
 				MutexLock m(MutexLock::ID::kMessages);
+				phase_messages.mark("kMessages held");
+				unsigned drained = 0;
 				for (const auto& it : *messages) {
+					if (++drained % 100U == 0U) {
+						phase_messages.mark(format("%u existing messages", drained));
+					}
 					const Message message(*it.second);
 					if (message.allowed_during_game_loading()) {
 						game_loading_messages.emplace_back(message);
@@ -98,9 +110,17 @@ void MapPlayersMessagesPacket::read(FileSystem& fs,
 				}
 				messages->clear();
 			}
+			phase_messages.mark("existing queue drained");
 
 			Time previous_message_sent(0);
+			unsigned sections = 0;
 			while (Section* const s = prof.get_next_section()) {
+				/* Every hundredth, so a loop that does not terminate says so
+				   instead of simply going quiet. Nothing here is per frame:
+				   a player's message file is a handful of sections. */
+				if (++sections % 100U == 0U) {
+					phase_messages.mark(format("%u sections", sections));
+				}
 				try {
 					const Time sent(s->get_safe_int("sent"));
 					if (sent < previous_message_sent) {
@@ -156,11 +176,14 @@ void MapPlayersMessagesPacket::read(FileSystem& fs,
 					throw GameDataError("\"%s\": %s", s->get_name(), e.what());
 				}
 			}
+			phase_messages.mark(format("%u sections read", sections));
 			prof.check_used();
+			phase_messages.mark("check_used");
 
 			for (const Message& message : game_loading_messages) {
 				messages->add_message(std::unique_ptr<Message>(new Message(message)));
 			}
+			phase_messages.mark("queue restored");
 		} else {
 			throw UnhandledVersionError(
 			   "MapPlayersMessagesPacket", packet_version, kCurrentPacketVersion);

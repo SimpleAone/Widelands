@@ -43,11 +43,13 @@ private:
 
 #else
 
+#include <string>
+
 class AmigaPhase {
 public:
-	explicit AmigaPhase(const char*) {
+	explicit AmigaPhase(const std::string&) {
 	}
-	void mark(const char*) {
+	void mark(const std::string&) {
 	}
 };
 
