@@ -18,6 +18,8 @@
 
 #include "logic/editor_game_base.h"
 
+#include <SDL_timer.h>
+
 #include <memory>
 
 #include "base/i18n.h"
@@ -367,7 +369,29 @@ void EditorGameBase::step_loader_ui(const std::string& text) const {
 	   that look exactly like a hang, so they go to the log as well. One tap
 	   covers every phase that publishes NoteLoadingMessage; there is nothing
 	   per-frame among them. */
-	log_progress("AMIGA LOADING: %s", text.c_str());
+	/* With the time the PREVIOUS step took.
+	 *
+	 * "Loading is slow" is not actionable while all 24 steps look alike in
+	 * the log. One of them owning most of the minutes is a different problem
+	 * from all of them being equally slow: the first is one thing to go and
+	 * look at, the second is the emulator. Reported against the step that
+	 * just finished rather than the one starting, because that is the one
+	 * whose duration has actually been measured. */
+	{
+		static Uint64 previous = 0;
+		static std::string previous_text;
+		const Uint64 now = SDL_GetPerformanceCounter();
+		if (previous != 0) {
+			log_progress("AMIGA LOADING: %s [previous '%s' took %.0fms]", text.c_str(),
+			             previous_text.c_str(),
+			             static_cast<double>(now - previous) * 1000.0 /
+			                static_cast<double>(SDL_GetPerformanceFrequency()));
+		} else {
+			log_progress("AMIGA LOADING: %s", text.c_str());
+		}
+		previous = now;
+		previous_text = text;
+	}
 	#endif
 	if (loader_ui_ != nullptr) {
 		loader_ui_->step(text);
