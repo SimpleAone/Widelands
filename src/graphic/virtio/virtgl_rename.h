@@ -123,5 +123,6 @@
 #define virtglPrepareGlowPresent wlgl_virtglPrepareGlowPresent
 #define virtglSetRenderTarget wlgl_virtglSetRenderTarget
 #define virtglPreparePresent wlgl_virtglPreparePresent
+#define virtglSetFragmentProgram wlgl_virtglSetFragmentProgram
 
 #endif  /* WL_GRAPHIC_VIRTIO_VIRTGL_RENAME_H */

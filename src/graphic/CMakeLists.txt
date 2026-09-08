@@ -355,6 +355,15 @@ if(OPTION_AMIGAOS4_VIRTIO_GL)
     ${VIRTGL_LAYER_DIR}/virtio_window_os4.c
     PROPERTIES
       INCLUDE_DIRECTORIES "${VIRTGL_LAYER_DIR};${VIRTGL_INCLUDE_DIR}")
+  # gl_frontend.cc keeps the real GL names and is NOT renamed, but it does
+  # need the layer's own header: the VIRTGL_FP_* fragment programs are
+  # declared there, and a second copy of those numbers here is a copy that
+  # can drift silently -- the wrong one selects a shader that reads a
+  # texture unit nothing bound.
+  set_source_files_properties(
+    virtio/gl_frontend.cc
+    PROPERTIES
+      INCLUDE_DIRECTORIES "${VIRTGL_LAYER_DIR};${VIRTGL_INCLUDE_DIR}")
 endif()
 
 # Base library

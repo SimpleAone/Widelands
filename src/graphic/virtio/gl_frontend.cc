@@ -10,6 +10,11 @@
 #include "graphic/virtio/gl_api.h"
 #include "graphic/virtio/virtgl_bridge.h"
 
+/* The layer's own header, for the VIRTGL_FP_* fragment programs. Taken from
+   the source of truth rather than copied: the numbers select a shader, and a
+   stale copy would select one that samples a texture unit nothing bound. */
+#include "virtgl_programs.h"
+
 #include "base/log.h"
 
 #ifdef WL_AMIGAOS4_VIRTIO_GL
@@ -636,8 +641,72 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 		unit_enabled[0] = want_unit0;
 	}
 
+	/* blit.fp picks one of three per-fragment formulas from a per-vertex
+	 * attribute, and two of them are real per-fragment work: flavour 1 greys
+	 * the texel by its own luminance before tinting it, flavour 2 mixes a
+	 * player colour in through a mask. Neither can be reached from a vertex
+	 * colour, so flavour 1 came out tinted but not grey and flavour 2 was
+	 * drawn as if it were flavour 0 -- player colours simply absent.
+	 *
+	 * The layer now carries both as named fragment programs, so the draw is
+	 * split into runs of constant flavour and each run asks for the one that
+	 * does exactly what the shader does. Widelands emits six vertices per
+	 * quad with the flavour repeated, so a run is never shorter than that
+	 * and the split costs draw calls only where a batch genuinely mixes
+	 * flavours.
+	 *
+	 * Everything that is not a blit keeps one run and VIRTGL_FP_DEFAULT,
+	 * which is the fixed-function path exactly as before. */
+	const bool split_by_flavour =
+	   program.kind == ProgramKind::kBlit && flavour != nullptr;
+	GLsizei run_start = 0;
+	while (run_start < count) {
+		GLsizei run_end = count;
+		unsigned fragment_program = VIRTGL_FP_DEFAULT;
+		float run_flavour = 0.0f;
+		if (split_by_flavour) {
+			read_attrib(*flavour, first + run_start, &run_flavour, 1);
+			run_end = run_start + 1;
+			while (run_end < count) {
+				float next = 0.0f;
+				read_attrib(*flavour, first + run_end, &next, 1);
+				if (next != run_flavour) {
+					break;
+				}
+				++run_end;
+			}
+			if (run_flavour > 0.5f && run_flavour < 1.5f) {
+				fragment_program = VIRTGL_FP_LUMINANCE_TINT;
+			} else if (run_flavour >= 1.5f) {
+				fragment_program = VIRTGL_FP_MASK_TINT;
+			}
+		}
+		/* The mask is read by the shader, not modulated by a texture
+		   environment, so unit 1 is enabled only for the run that wants it
+		   -- and the layer only passes a bound texture through for an
+		   enabled unit. */
+		const bool run_unit1 = fragment_program == VIRTGL_FP_MASK_TINT &&
+		                       second_texture != nullptr && bound_textures[1] != 0;
+		if (unit_enabled[1] != run_unit1) {
+			wlgl_glActiveTextureARB(GL_TEXTURE1);
+			if (run_unit1) {
+				wlgl_glEnable(GL_TEXTURE_2D);
+			} else {
+				wlgl_glDisable(GL_TEXTURE_2D);
+			}
+			unit_enabled[1] = run_unit1;
+			wlgl_glActiveTextureARB(GL_TEXTURE0);
+			active_texture_unit = 0;
+		}
+		if (fragment_program == VIRTGL_FP_MASK_TINT && !run_unit1) {
+			/* No mask bound after all: flavour 2 without its second texture
+			   is flavour 0, which is what it used to be drawn as anyway. */
+			fragment_program = VIRTGL_FP_DEFAULT;
+		}
+		wlgl_virtglSetFragmentProgram(fragment_program);
+
 	wlgl_glBegin(mode == GL_LINES ? GL_LINES : GL_TRIANGLES);
-	for (GLsizei index = 0; index < count; ++index) {
+	for (GLsizei index = run_start; index < run_end; ++index) {
 		const GLsizei vertex = first + index;
 
 		/* What the fragment shader would have produced, expressed as the
@@ -653,22 +722,23 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 			if (colour != nullptr) {
 				read_attrib(*colour, vertex, blend, 4);
 			}
-			float which = 0.0f;
-			if (flavour != nullptr) {
-				read_attrib(*flavour, vertex, &which, 1);
-			}
-			if (which > 0.5f && which < 1.5f) {
-				/* Monochrome: luminance(texture) * blend.rgb. The luminance is
-				   per fragment and out of reach here, so the tint is applied to
-				   the texture instead -- the right colour, not yet grey. */
+			if (fragment_program != VIRTGL_FP_DEFAULT) {
+				/* A named program is drawing this run, and both of them read
+				   Widelands' out_blend straight out of the vertex colour --
+				   luminance, mask and mix all happen per fragment where the
+				   shader does them. So hand the blend over unchanged and do
+				   nothing to it here. */
 				rgba[0] = blend[0];
 				rgba[1] = blend[1];
 				rgba[2] = blend[2];
+				rgba[3] = blend[3];
+			} else {
+				/* Flavour 0: vec4(texture.rgb, blend.a * texture.a). The blend
+				   colour carries opacity and nothing else -- modulating by its
+				   rgb, which Widelands sets to black on purpose, is what made
+				   every blit come out black. */
+				rgba[3] = blend[3];
 			}
-			/* Flavour 2 mixes in a player colour through a mask, which is also
-			   per fragment. Drawn as the plain flavour until the layer can do
-			   it: the image is right, the player colour is missing. */
-			rgba[3] = blend[3];
 		} break;
 
 		case ProgramKind::kGrid:
@@ -768,6 +838,11 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 		wlgl_glVertex3f(xyz[0], xyz[1], xyz[2]);
 	}
 	wlgl_glEnd();
+		run_start = run_end;
+	}
+	/* Put it back. The layer treats this as sticky GL state, so leaving a
+	   named program selected would draw the next unrelated batch with it. */
+	wlgl_virtglSetFragmentProgram(VIRTGL_FP_DEFAULT);
 }
 
 void glDrawBuffer(GLenum buffer) {

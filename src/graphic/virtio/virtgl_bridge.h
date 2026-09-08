@@ -76,6 +76,10 @@ void wlgl_virtglSetRenderTarget(unsigned texture, unsigned width, unsigned heigh
 
 /* The frame boundary, in the order every port performs it. */
 void wlgl_virtglPreparePresent(void);
+/* Which fragment program the layer draws the following batches with, one of
+   the VIRTGL_FP_* values. Widelands needs it because two of blit.fp's three
+   flavours are per-fragment work no texture environment expresses. */
+void wlgl_virtglSetFragmentProgram(unsigned program);
 void wlgl_virtglEndFrameCapture(void);
 
 }  // extern "C"
