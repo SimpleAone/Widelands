@@ -18,6 +18,7 @@
 
 #include "graphic/text_layout.h"
 
+#include <map>
 #include <memory>
 
 #include "base/log.h"
@@ -63,34 +64,34 @@ int text_width(const std::string& text, const UI::FontStyleInfo& style, float sc
 }
 
 int text_height(const UI::FontStyleInfo& style, float scale) {
-	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA TEXT HEIGHT CHECKPOINT: start size=%d scale=%f", style.size(), scale);
-	#endif
 	UI::FontStyleInfo info(style);
-	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA TEXT HEIGHT CHECKPOINT: after style copy, before fontset");
-	#endif
 	info.set_size(info.size() * scale - UI::g_fh->fontset()->size_offset());
-	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA TEXT HEIGHT CHECKPOINT: after size adjustment size=%d", info.size());
-	#endif
 	const std::string representative = UI::g_fh->fontset()->representative_character();
-	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA TEXT HEIGHT CHECKPOINT: representative character ready (%u bytes)",
-	         static_cast<unsigned>(representative.size()));
-	#endif
 	const std::string richtext = as_richtext_paragraph(representative, info);
-	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA TEXT HEIGHT CHECKPOINT: richtext ready, before render");
-	#endif
-	const std::shared_ptr<const UI::RenderedText> rendered = UI::g_fh->render(richtext);
-	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA TEXT HEIGHT CHECKPOINT: after render");
-	#endif
-	const int height = rendered->height();
-	#ifdef WL_AMIGAOS4_VIRTIO_GL
-	log_info("AMIGA TEXT HEIGHT CHECKPOINT: complete height=%d", height);
-	#endif
+
+	/* Remembered, because this is a pure function of that string.
+	 *
+	 * Asking how tall a font is renders a representative character through
+	 * the whole rich-text pipeline -- parse, lay out, rasterise with
+	 * SDL_ttf, upload a texture -- reads one integer off the result and
+	 * throws all of it away. On AmigaOS a single map load called this 129
+	 * times, and the GPU layer reported exactly 129 reclaimed texture slots
+	 * over the same stretch: this is where that churn comes from.
+	 *
+	 * The richtext string is the whole of the input -- it carries the face,
+	 * the size, the scale already applied, and the fontset's representative
+	 * character -- so two calls that build the same string must produce the
+	 * same height. A language switch changes the representative character
+	 * and the size offset, so it changes the key; the entries it leaves
+	 * behind are a few dozen integers and are still correct if that locale
+	 * comes back. */
+	static std::map<std::string, int> heights;
+	const auto cached = heights.find(richtext);
+	if (cached != heights.end()) {
+		return cached->second;
+	}
+	const int height = UI::g_fh->render(richtext)->height();
+	heights.emplace(richtext, height);
 	return height;
 }
 
