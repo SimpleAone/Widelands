@@ -69,29 +69,25 @@ int text_height(const UI::FontStyleInfo& style, float scale) {
 	const std::string representative = UI::g_fh->fontset()->representative_character();
 	const std::string richtext = as_richtext_paragraph(representative, info);
 
-	/* Remembered, because this is a pure function of that string.
+	/* NOT cached, for now.
 	 *
-	 * Asking how tall a font is renders a representative character through
-	 * the whole rich-text pipeline -- parse, lay out, rasterise with
-	 * SDL_ttf, upload a texture -- reads one integer off the result and
-	 * throws all of it away. On AmigaOS a single map load called this 129
-	 * times, and the GPU layer reported exactly 129 reclaimed texture slots
-	 * over the same stretch: this is where that churn comes from.
+	 * A cache keyed on this string went in and the game tips came out as
+	 * scattered words -- text layout broken -- and this was the only change
+	 * all day that touched text metrics. The key looks complete
+	 * (as_font_tag serialises face, size, colour, bold, italic, shadow and
+	 * underline) and I could not find the flaw by reading, so it is out
+	 * until the picture says which change actually did it. Correctness
+	 * first; the second-guessing can happen with evidence.
 	 *
-	 * The richtext string is the whole of the input -- it carries the face,
-	 * the size, the scale already applied, and the fontset's representative
-	 * character -- so two calls that build the same string must produce the
-	 * same height. A language switch changes the representative character
-	 * and the size offset, so it changes the key; the entries it leaves
-	 * behind are a few dozen integers and are still correct if that locale
-	 * comes back. */
-	static std::map<std::string, int> heights;
-	const auto cached = heights.find(richtext);
-	if (cached != heights.end()) {
-		return cached->second;
-	}
+	 * Worth coming back to: this renders a character through the whole
+	 * rich-text pipeline and uploads a texture to answer "how tall is this
+	 * font", 129 times per map load, and the GPU layer reclaimed exactly
+	 * 129 texture slots over the same stretch. If it is cached again, note
+	 * that this file is built WITHOUT -fno-threadsafe-statics, so a
+	 * function-local static with a constructor gets a guard variable -- a
+	 * pattern that has misbehaved on this toolchain before. Use a
+	 * namespace-scope one. */
 	const int height = UI::g_fh->render(richtext)->height();
-	heights.emplace(richtext, height);
 	return height;
 }
 
