@@ -400,6 +400,7 @@ void Game::init_newgame(const GameSettings& settings) {
 		// previously created for us we need to call this manually
 		allocate_player_maps();
 	}
+	phase_preload.mark("load_map_complete");
 
 	// Check for win_conditions
 	if (!settings.scenario) {
@@ -442,15 +443,19 @@ void Game::init_newgame(const GameSettings& settings) {
 		diplomacy_allowed_ = ((settings.flags & GameSettings::Flags::kForbidDiplomacy) == 0);
 		naval_warfare_allowed_ = ((settings.flags & GameSettings::Flags::kAllowNavalWarfare) != 0);
 		win_condition_duration_ = settings.win_condition_duration;
+		phase_preload.mark("game flags");
 		std::unique_ptr<LuaTable> table(lua().run_script(settings.win_condition_script));
+		phase_preload.mark("win condition script");
 		table->do_not_warn_about_unaccessed_keys();
 		win_condition_displayname_ = table->get_string("name");
 		if (table->has_key<std::string>("init")) {
 			std::unique_ptr<LuaCoroutine> cr = table->get_coroutine("init");
 			cr->resume();
 		}
+		phase_preload.mark("win condition init");
 		std::unique_ptr<LuaCoroutine> cr = table->get_coroutine("func");
 		enqueue_command(new CmdLuaCoroutine(get_gametime() + Duration(100), std::move(cr)));
+		phase_preload.mark("win condition queued");
 	} else {
 		win_condition_displayname_ = "Scenario";
 	}
@@ -633,7 +638,12 @@ bool Game::run(StartGameType const start_game_type,
                const std::string& prefix_for_replays) {
 	assert(has_loader_ui());
 
+	/* Everything from here to remove_loader_ui() is a single progress message
+	   as far as the player can see, and it runs Lua, builds every player's
+	   starting infrastructure and takes the first game tick. */
+	AmigaPhase phase_run("Game::run: entered");
 	postload();
+	phase_run.mark("postload");
 
 	InteractivePlayer* ipl = get_ipl();
 
@@ -665,6 +675,7 @@ bool Game::run(StartGameType const start_game_type,
 			Notifications::publish(UI::NoteLoadingMessage(_("Creating player infrastructure…")));
 			iterate_players_existing(p, nr_players, *this, plr) {
 				plr->create_default_infrastructure();
+				phase_run.mark(format("infrastructure for player %u", static_cast<unsigned>(p)));
 			}
 #if 0  // TODO(Nordfriese): Re-add training wheels code after v1.0
 			training_wheels_wanted_ =
@@ -696,9 +707,11 @@ bool Game::run(StartGameType const start_game_type,
 			ipl->map_view()->scroll_to_field(
 			   map().get_starting_pos(ipl->player_number()), MapView::Transition::Jump);
 		}
+		phase_run.mark("scrolled to start");
 
 		// Prepare the map, set default textures
 		mutable_map()->recalc_default_resources(descriptions());
+		phase_run.mark("recalc_default_resources");
 
 		// Finally, set the scenario names and tribes to represent
 		// the correct names of the players
@@ -734,8 +747,10 @@ bool Game::run(StartGameType const start_game_type,
 		// Queue first statistics calculation
 		enqueue_command(new CmdCalculateStatistics(get_gametime() + Duration(1)));
 	}
+	phase_run.mark("init scripts queued");
 
 	dynamic_cast<InteractiveGameBase&>(*get_ibase()).rebuild_main_menu();
+	phase_run.mark("rebuild_main_menu");
 
 	if (!script_to_run.empty()) {
 		enqueue_command(new CmdLuaScript(get_gametime() + Duration(1), script_to_run));
@@ -778,6 +793,7 @@ bool Game::run(StartGameType const start_game_type,
 	}
 
 	postload_addons();
+	phase_run.mark("postload_addons");
 
 	sync_reset();
 	Notifications::publish(UI::NoteLoadingMessage(_("Initializing…")));
@@ -791,6 +807,7 @@ bool Game::run(StartGameType const start_game_type,
 #endif
 
 	g_sh->change_music(Songset::kIngame);
+	phase_run.mark("music");
 
 	state_ = gs_running;
 
@@ -798,7 +815,9 @@ bool Game::run(StartGameType const start_game_type,
 	// to ensure that there is no black screen in the brief interval between
 	// the initialization and the loading of the initial scripts.
 	think();
+	phase_run.mark("first think");
 	remove_loader_ui();
+	phase_run.mark("loader ui removed -- the game is on screen");
 
 #if 0  // TODO(Nordfriese): Re-add training wheels code after v1.0
 	// If this is a singleplayer map or non-scenario savegame, put on our training wheels unless the

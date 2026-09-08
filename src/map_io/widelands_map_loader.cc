@@ -24,6 +24,7 @@
 
 #include <cstdio>
 
+#include "base/amiga_phase.h"
 #include "base/log.h"
 #include "base/scoped_timer.h"
 #include "io/filesystem/filesystem.h"
@@ -471,14 +472,19 @@ int32_t WidelandsMapLoader::load_map_complete(EditorGameBase& egbase,
 
 	verb_log_info("Reading Scripting Data ... ");
 	set_progress_message(_("Scripting"), is_editor ? 7 : 21);
+	/* The last four steps are one progress message each, and the work between
+	   two of them is minutes long. Time the pieces from the inside. */
+	AmigaPhase phase_tail("map loader tail");
 	{
 		MapScriptingPacket p;
 		p.read(*fs_, egbase, is_game, *mol_);
 	}
+	phase_tail.mark("scripting packet");
 
 	verb_log_info("Reading map images ... ");
 	set_progress_message(_("Images"), is_editor ? 8 : 22);
 	load_map_images(*fs_);
+	phase_tail.mark("map images");
 
 	set_progress_message(_("Checking map"), is_editor ? 9 : 23);
 	if (!is_editor) {
@@ -490,8 +496,10 @@ int32_t WidelandsMapLoader::load_map_complete(EditorGameBase& egbase,
 	}  // load_type != MapLoader::LoadType::kEditor
 
 	map_.recalc_whole_map(egbase);
+	phase_tail.mark("recalc_whole_map");
 
 	map_.ensure_resource_consistency(egbase.descriptions());
+	phase_tail.mark("ensure_resource_consistency");
 
 	if (!is_editor) {
 		verb_log_info("Fourth phase loading Map Objects ... ");
@@ -510,7 +518,10 @@ int32_t WidelandsMapLoader::load_map_complete(EditorGameBase& egbase,
 		}
 	}
 
+	phase_tail.mark("postloading map objects");
+
 	set_state(State::kLoaded);
+	phase_tail.mark("map loaded");
 
 	return 0;
 }

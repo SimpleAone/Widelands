@@ -20,6 +20,7 @@
 
 #include <csignal>
 
+#include "base/amiga_phase.h"
 #include "base/log.h"
 #include "base/macros.h"
 #include "base/string.h"
@@ -94,15 +95,20 @@ void MapScriptingPacket::read(FileSystem& fs,
 	// Always try to load the global State: even in a normal game, some lua
 	// coroutines could run. But make sure that this is really a game, other
 	// wise this makes no sense.
+	AmigaPhase phase("scripting packet");
 	FileRead fr;
-	if (egbase.is_game() && fr.try_open(fs, "scripting/globals.dump")) {
+	const bool have_dump = egbase.is_game() && fr.try_open(fs, "scripting/globals.dump");
+	phase.mark(have_dump ? "globals.dump opened" : "no globals.dump");
+	if (have_dump) {
 		try {
 			const uint32_t packet_version = fr.unsigned_32();
 			if (packet_version >= 5 && packet_version <= kCurrentPacketVersion) {
 				upcast(LuaGameInterface, lgi, &egbase.lua());
 				signal(SIGABRT, &abort_handler);
 				lgi->read_textdomain_stack(fr);
+				phase.mark("textdomain stack");
 				lgi->read_global_env(fr, mol, fr.unsigned_32());
+				phase.mark("global env");
 				signal(SIGABRT, SIG_DFL);
 			} else {
 				throw UnhandledVersionError(
