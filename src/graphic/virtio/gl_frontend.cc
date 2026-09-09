@@ -809,9 +809,13 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 		wlgl_glColor4f(rgba[0], rgba[1], rgba[2], rgba[3]);
 
 		float uv_logged[2] = {0.0f, 0.0f};
+		float raw_uv[2] = {0.0f, 0.0f};
+		float raw_offset[2] = {0.0f, 0.0f};
 		if (texture_position != nullptr) {
 			float uv[2] = {0.0f, 0.0f};
 			read_attrib(*texture_position, vertex, uv, 2);
+			raw_uv[0] = uv[0];
+			raw_uv[1] = uv[1];
 			if (texture_offset != nullptr) {
 				/* The atlas: fract() clamped inside a margin, then scaled by
 				   the tile's size and moved to its corner. The margin is the
@@ -820,6 +824,8 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 				const float margin = 1e-2f;
 				float offset[2] = {0.0f, 0.0f};
 				read_attrib(*texture_offset, vertex, offset, 2);
+				raw_offset[0] = offset[0];
+				raw_offset[1] = offset[1];
 				for (int c = 0; c < 2; ++c) {
 					float f = uv[c] - std::floor(uv[c]);
 					if (f < margin) { f = margin; }
@@ -846,6 +852,31 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 		   reports the right attributes can still be reading the wrong bytes:
 		   a wrong stride or offset produces coordinates far outside the
 		   clip cube and nothing on screen, and looks identical from here. */
+		/* Terrain and dither, separately and by their own count.
+		 *
+		 * Half the terrain renders as flat white triangles, at every zoom,
+		 * always the same ones. These two are the only programs the layer
+		 * approximates -- their shaders index the atlas with a per-fragment
+		 * fract() and this does it per vertex -- so the numbers that go into
+		 * that sum are the ones worth seeing: the raw tile coordinate, the
+		 * atlas offset, the tile size uniform, and what the three make.
+		 * A flat triangle means every corner came out at the same texel,
+		 * which u_texture_dimensions at zero would do on its own. */
+		if ((program.kind == ProgramKind::kTerrain ||
+		     program.kind == ProgramKind::kDither) &&
+		    index < 3) {
+			static unsigned terrain_draws = 0;
+			if (index == 0) { ++terrain_draws; }
+			if (terrain_draws <= 4) {
+				log_info("VirtIO GL:   %s v%d raw_uv %.4f %.4f  offset %.4f %.4f  "
+				         "dims %.4f %.4f  -> uv %.4f %.4f  tex %u %s",
+				         program.kind == ProgramKind::kTerrain ? "TERRAIN" : "DITHER",
+				         index, raw_uv[0], raw_uv[1], raw_offset[0], raw_offset[1],
+				         uniform_texture_dimensions[0], uniform_texture_dimensions[1],
+				         uv_logged[0], uv_logged[1], bound_textures[0],
+				         texture_offset != nullptr ? "" : "NO OFFSET ATTRIB");
+			}
+		}
 		if (draws < 3 && index < 3) {
 			log_info("VirtIO GL:   v%d xyz %.3f %.3f %.3f  uv %.3f %.3f  rgba %.2f %.2f %.2f %.2f",
 			         static_cast<int>(index), xyz[0], xyz[1], xyz[2],
