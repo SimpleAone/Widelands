@@ -868,7 +868,11 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 			static unsigned terrain_draws = 0;
 			if (index == 0) { ++terrain_draws; }
 			if (terrain_draws <= 4) {
-				log_info("VirtIO GL:   %s v%d raw_uv %.4f %.4f  offset %.4f %.4f  "
+				/* log_progress, not log_info: nothing calls log_progress once
+				   the game is running, so an ordinary info line sits in the
+				   64K buffer and never reaches the share. Twelve lines in
+				   total, so the close-and-reopen it costs is nothing. */
+				log_progress("VirtIO GL:   %s v%d raw_uv %.4f %.4f  offset %.4f %.4f  "
 				         "dims %.4f %.4f  -> uv %.4f %.4f  tex %u %s",
 				         program.kind == ProgramKind::kTerrain ? "TERRAIN" : "DITHER",
 				         index, raw_uv[0], raw_uv[1], raw_offset[0], raw_offset[1],
