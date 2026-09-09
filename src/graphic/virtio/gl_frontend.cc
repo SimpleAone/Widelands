@@ -888,6 +888,31 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 			         texture_position != nullptr ? uv_logged[1] : 0.0f, rgba[0], rgba[1], rgba[2],
 			         rgba[3]);
 		}
+#ifdef __amigaos4__
+		/* The Crater description sits in the box on the right (x > 440), and
+		   one word in it -- "the" -- is blank while every other word shows.
+		   Everything measurable about its draw looks correct, so the last
+		   unchecked thing is the texture coordinate: a valid, filled texture
+		   sampled with degenerate UVs draws blank and looks perfect from
+		   everywhere else. Log the first vertex of a small textured draw in
+		   that box, with the texture, its size, position and UV. log_progress
+		   so it survives the buffering; capped so it stays small. */
+		if (index == 0 && texture_position != nullptr && bound_textures[0] != 0 &&
+		    xyz[0] > 440.0f) {
+			const auto it = textures.find(bound_textures[0]);
+			const int tw = it != textures.end() ? it->second.width : -1;
+			const int th = it != textures.end() ? it->second.height : -1;
+			if (tw > 0 && tw < 80 && th > 0 && th < 48) {
+				static unsigned descWords = 0;
+				if (descWords < 60) {
+					++descWords;
+					log_progress("AMIGA DESCWORD: tex=%u %dx%d at %.0f,%.0f uv %.3f %.3f",
+					             bound_textures[0], tw, th, xyz[0], xyz[1],
+					             uv_logged[0], uv_logged[1]);
+				}
+			}
+		}
+#endif
 		wlgl_glVertex3f(xyz[0], xyz[1], xyz[2]);
 	}
 	wlgl_glEnd();
