@@ -687,6 +687,20 @@ std::shared_ptr<UI::RenderedText> TextNode::render(TextureCache* texture_cache) 
 	auto rendered_image =
 	   font_.render(txt_, nodestyle_.font_color, nodestyle_.font_style, texture_cache);
 	assert(rendered_image != nullptr);
+#ifdef __amigaos4__
+	/* Which words the layout actually turns into an image, and how big.
+	 *
+	 * A specific short word ("the", "and") is blank in a rich-text paragraph
+	 * while the same word drawn straight is fine, and the GPU layer resolves
+	 * and has content for everything it is handed. So the question is whether
+	 * this word even becomes a non-empty image here. Short words only, so the
+	 * log stays small; log_progress so it survives the buffering. */
+	if (txt_.size() <= 4) {
+		log_progress("AMIGA TEXTNODE: '%s' -> %ux%u", txt_.c_str(),
+		             rendered_image != nullptr ? rendered_image->width() : 0u,
+		             rendered_image != nullptr ? rendered_image->height() : 0u);
+	}
+#endif
 	std::shared_ptr<UI::RenderedText> rendered_text(new UI::RenderedText());
 	rendered_text->rects.push_back(
 	   std::unique_ptr<UI::RenderedRect>(new UI::RenderedRect(rendered_image, click_target_)));
