@@ -528,6 +528,9 @@ bool read_attrib(const AttribArray& a, GLsizei vertex, float* out, int wanted) {
 extern "C" {
 volatile int g_descword_arm = 0;
 unsigned g_descword_count = 0;
+/* Defined in the backend: draw-time content status of a texture id, so the
+   probe can tell a blank word (a slot with no content) from a visible one. */
+int virtioBackendTextureContent(unsigned texture);
 }
 #endif
 
@@ -948,11 +951,16 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 			if (tw > 0 && tw < 120 && th > 0 && th < 48) {
 				if (g_descword_count < 200) {
 					++g_descword_count;
+					/* Content status of the very texture this draw samples:
+					   -1 unknown, else (slot<<4)|res|written<<1|dead<<2. A word
+					   drawn from a slot with no content (written bit clear, or
+					   resource bit clear) is the blank one. */
+					const int content = virtioBackendTextureContent(bound_textures[0]);
 					log_progress("AMIGA DESCWORD: tex=%u %dx%d box %.3f,%.3f..%.3f,%.3f "
-					             "uv %.3f,%.3f..%.3f,%.3f verts=%d",
+					             "uv %.3f,%.3f..%.3f,%.3f verts=%d content=%d",
 					             bound_textures[0], tw, th, dw_xmin, dw_ymin, dw_xmax, dw_ymax,
 					             dw_uvmin[0], dw_uvmin[1], dw_uvmax[0], dw_uvmax[1],
-					             static_cast<int>(run_end - run_start));
+					             static_cast<int>(run_end - run_start), content);
 				}
 			}
 		}
