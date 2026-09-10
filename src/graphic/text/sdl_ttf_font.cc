@@ -84,9 +84,20 @@ std::shared_ptr<const Image> SdlTtfFont::render(const std::string& txt,
 		g_descword_arm = 1;
 	}
 #endif
-	const std::string hash =
+	std::string hash =
 	   format("ttf:%s:%i:%s:%02x%02x%02x:%i", font_name_, ptsize_, txt, static_cast<int>(clr.r),
 	          static_cast<int>(clr.g), static_cast<int>(clr.b), style);
+#ifdef __amigaos4__
+	/* EXPERIMENT: force the word 'the' to render fresh every time by making
+	   its cache key unique, so the description gets a brand-new high-id
+	   texture instead of the old cached id 1188 it reuses. If the fresh one
+	   shows while the cached one was blank, the fault is the re-appended old
+	   texture's resource, not the draw. Diagnostic only -- to be removed. */
+	if (txt == "the") {
+		static unsigned the_fresh = 0;
+		hash += format(":amigafresh%u", ++the_fresh);
+	}
+#endif
 	std::shared_ptr<const Image> rv = texture_cache->get(hash);
 	if (rv != nullptr) {
 #ifdef __amigaos4__
