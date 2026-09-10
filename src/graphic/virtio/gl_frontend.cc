@@ -923,14 +923,20 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 		if (xyz[0] > dw_xmax) { dw_xmax = xyz[0]; }
 		if (xyz[1] < dw_ymin) { dw_ymin = xyz[1]; }
 		if (xyz[1] > dw_ymax) { dw_ymax = xyz[1]; }
+		/* attr_position is already clip space (blit.vp: gl_Position =
+		   vec4(attr_position, 1.), no transform), so x is in -1..1, not
+		   pixels -- the old >440 test could never be true. The details box
+		   is the right half of the map-select screen (the map table is the
+		   left half), so x > 0.1 in NDC isolates the description words and
+		   excludes the centred menu and the left-hand list. */
 		if (index == run_end - 1 && texture_position != nullptr &&
-		    bound_textures[0] != 0 && dw_xmin > 440.0f) {
+		    bound_textures[0] != 0 && dw_xmin > 0.1f) {
 			const auto it = textures.find(bound_textures[0]);
 			const int tw = it != textures.end() ? it->second.width : -1;
 			const int th = it != textures.end() ? it->second.height : -1;
 			if (tw > 0 && tw < 120 && th > 0 && th < 48) {
 				static unsigned descWords = 0;
-				if (descWords < 80) {
+				if (descWords < 200) {
 					++descWords;
 					log_progress("AMIGA DESCWORD: tex=%u %dx%d box %.0f,%.0f..%.0f,%.0f "
 					             "uv %.3f,%.3f..%.3f,%.3f verts=%d",
