@@ -21,6 +21,10 @@
 #include <memory>
 
 #include "base/string.h"
+#ifdef __amigaos4__
+#include "base/log.h"
+#include "graphic/image.h"
+#endif
 #include "graphic/sdl_utils.h"
 #include "graphic/text/rt_errors.h"
 
@@ -85,6 +89,12 @@ std::shared_ptr<const Image> SdlTtfFont::render(const std::string& txt,
 	          static_cast<int>(clr.g), static_cast<int>(clr.b), style);
 	std::shared_ptr<const Image> rv = texture_cache->get(hash);
 	if (rv != nullptr) {
+#ifdef __amigaos4__
+		if (g_descword_arm && g_descword_count < 200) {
+			log_progress("AMIGA WORDMAP: '%s' id=%u (cached)", txt.c_str(),
+			             rv->blit_data().texture_id);
+		}
+#endif
 		return rv;
 	}
 
@@ -160,7 +170,15 @@ std::shared_ptr<const Image> SdlTtfFont::render(const std::string& txt,
 		throw RenderError(format("Rendering '%s' gave the error: %s", txt, TTF_GetError()));
 	}
 
-	return texture_cache->insert(hash, std::make_shared<Texture>(text_surface));
+	std::shared_ptr<const Image> made =
+	   texture_cache->insert(hash, std::make_shared<Texture>(text_surface));
+#ifdef __amigaos4__
+	if (g_descword_arm && g_descword_count < 200) {
+		log_progress("AMIGA WORDMAP: '%s' id=%u (fresh)", txt.c_str(),
+		             made->blit_data().texture_id);
+	}
+#endif
+	return made;
 }
 
 uint16_t SdlTtfFont::ascent(int style) const {
