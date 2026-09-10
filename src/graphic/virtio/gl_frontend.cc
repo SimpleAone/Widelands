@@ -520,6 +520,17 @@ bool read_attrib(const AttribArray& a, GLsizei vertex, float* out, int wanted) {
  * instead. It agrees with the shader wherever a triangle stays inside one
  * tile, which is how Widelands lays its terrain out, and differs only where
  * one spans a tile boundary. */
+#ifdef __amigaos4__
+/* Armed by the font renderer the first time it renders a word unique to the
+   Crater description ("meteor"), so DESCWORD captures that screen's blits and
+   not the hundreds of loading/menu words that otherwise exhaust the cap long
+   before the map-select screen appears. Reset to 0 on arm. */
+extern "C" {
+volatile int g_descword_arm = 0;
+unsigned g_descword_count = 0;
+}
+#endif
+
 void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 	/* Every refusal below used to be silent, which is why the log could show a
 	   game presenting six hundred frames with not one triangle in them. Each
@@ -929,16 +940,15 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 		   is the right half of the map-select screen (the map table is the
 		   left half), so x > 0.1 in NDC isolates the description words and
 		   excludes the centred menu and the left-hand list. */
-		if (index == run_end - 1 && texture_position != nullptr &&
-		    bound_textures[0] != 0 && dw_xmin > 0.1f) {
+		if (g_descword_arm && index == run_end - 1 && texture_position != nullptr &&
+		    bound_textures[0] != 0 && dw_xmin > 0.0f) {
 			const auto it = textures.find(bound_textures[0]);
 			const int tw = it != textures.end() ? it->second.width : -1;
 			const int th = it != textures.end() ? it->second.height : -1;
 			if (tw > 0 && tw < 120 && th > 0 && th < 48) {
-				static unsigned descWords = 0;
-				if (descWords < 200) {
-					++descWords;
-					log_progress("AMIGA DESCWORD: tex=%u %dx%d box %.0f,%.0f..%.0f,%.0f "
+				if (g_descword_count < 200) {
+					++g_descword_count;
+					log_progress("AMIGA DESCWORD: tex=%u %dx%d box %.3f,%.3f..%.3f,%.3f "
 					             "uv %.3f,%.3f..%.3f,%.3f verts=%d",
 					             bound_textures[0], tw, th, dw_xmin, dw_ymin, dw_xmax, dw_ymax,
 					             dw_uvmin[0], dw_uvmin[1], dw_uvmax[0], dw_uvmax[1],

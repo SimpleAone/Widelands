@@ -60,10 +60,26 @@ void SdlTtfFont::dimensions(const std::string& txt, int style, uint16_t* gw, uin
 	*gh = h;
 }
 
+#ifdef __amigaos4__
+/* Defined in src/graphic/virtio/gl_frontend.cc. Armed here when the word
+   unique to the Crater map description is first rendered, so the DESCWORD
+   probe captures that screen's blits instead of the loading/menu words. */
+extern "C" {
+extern volatile int g_descword_arm;
+extern unsigned g_descword_count;
+}
+#endif
+
 std::shared_ptr<const Image> SdlTtfFont::render(const std::string& txt,
                                                 const RGBColor& clr,
                                                 int style,
                                                 TextureCache* texture_cache) {
+#ifdef __amigaos4__
+	if (txt == "meteor") {
+		g_descword_count = 0;
+		g_descword_arm = 1;
+	}
+#endif
 	const std::string hash =
 	   format("ttf:%s:%i:%s:%02x%02x%02x:%i", font_name_, ptsize_, txt, static_cast<int>(clr.r),
 	          static_cast<int>(clr.g), static_cast<int>(clr.b), style);
