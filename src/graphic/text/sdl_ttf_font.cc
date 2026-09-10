@@ -93,7 +93,9 @@ std::shared_ptr<const Image> SdlTtfFont::render(const std::string& txt,
 	   texture instead of the old cached id 1188 it reuses. If the fresh one
 	   shows while the cached one was blank, the fault is the re-appended old
 	   texture's resource, not the draw. Diagnostic only -- to be removed. */
-	if (txt == "the") {
+	/* Experiment temporarily disabled: keep 'the' on its cached id 1188 so the
+	   backend attachment probe can observe the blank slot. */
+	if (false && txt == "the") {
 		static unsigned the_fresh = 0;
 		hash += format(":amigafresh%u", ++the_fresh);
 	}
