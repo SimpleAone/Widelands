@@ -520,19 +520,6 @@ bool read_attrib(const AttribArray& a, GLsizei vertex, float* out, int wanted) {
  * instead. It agrees with the shader wherever a triangle stays inside one
  * tile, which is how Widelands lays its terrain out, and differs only where
  * one spans a tile boundary. */
-#ifdef __amigaos4__
-/* Armed by the font renderer the first time it renders a word unique to the
-   Crater description ("meteor"), so DESCWORD captures that screen's blits and
-   not the hundreds of loading/menu words that otherwise exhaust the cap long
-   before the map-select screen appears. Reset to 0 on arm. */
-extern "C" {
-volatile int g_descword_arm = 0;
-unsigned g_descword_count = 0;
-/* Defined in the backend: draw-time content status of a texture id, so the
-   probe can tell a blank word (a slot with no content) from a visible one. */
-int virtioBackendTextureContent(unsigned texture);
-}
-#endif
 
 void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 	/* Every refusal below used to be silent, which is why the log could show a
@@ -738,21 +725,8 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 		wlgl_virtglSetFragmentProgram(fragment_program);
 
 	wlgl_glBegin(mode == GL_LINES ? GL_LINES : GL_TRIANGLES);
-#ifdef __amigaos4__
-	/* Per-run bounding box of screen position and UV, so DESCWORD can log one
-	   decisive line per word (index here is a global vertex index, never 0 for
-	   later runs -- the old index==0 test essentially never fired). */
-	float dw_uvmin[2] = {1e9f, 1e9f}, dw_uvmax[2] = {-1e9f, -1e9f};
-	float dw_xmin = 1e9f, dw_xmax = -1e9f, dw_ymin = 1e9f, dw_ymax = -1e9f;
-#endif
 	for (GLsizei index = run_start; index < run_end; ++index) {
 		const GLsizei vertex = first + index;
-#ifdef __amigaos4__
-		if (index == run_start) {
-			dw_uvmin[0] = dw_uvmin[1] = 1e9f; dw_uvmax[0] = dw_uvmax[1] = -1e9f;
-			dw_xmin = dw_ymin = 1e9f; dw_xmax = dw_ymax = -1e9f;
-		}
-#endif
 
 		/* What the fragment shader would have produced, expressed as the
 		   vertex colour a GL_MODULATE unit needs to produce the same thing. */
@@ -915,56 +889,6 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 			         texture_position != nullptr ? uv_logged[1] : 0.0f, rgba[0], rgba[1], rgba[2],
 			         rgba[3]);
 		}
-#ifdef __amigaos4__
-		/* The Crater description sits in the box on the right (x > 440), and
-		   one word in it -- "the" -- is blank while every other word shows.
-		   Accumulate this run's screen box and UV box; at the last vertex log
-		   one line per small textured word in that box. Two things are decisive:
-		   whether "the" is drawn at all (a gap in the sequence means layout
-		   dropped it), and, if drawn, whether its UV box is degenerate (a valid
-		   filled texture sampled with collapsed UVs draws blank and looks fine
-		   from everywhere else) or a normal sub-rect (then the texture content
-		   or our slot resolution is the fault, not the coordinates). The word's
-		   own width is the texture width (tw): "the" is ~18-24px. log_progress
-		   so it survives buffering; capped so it stays small. */
-		if (texture_position != nullptr) {
-			if (uv_logged[0] < dw_uvmin[0]) { dw_uvmin[0] = uv_logged[0]; }
-			if (uv_logged[1] < dw_uvmin[1]) { dw_uvmin[1] = uv_logged[1]; }
-			if (uv_logged[0] > dw_uvmax[0]) { dw_uvmax[0] = uv_logged[0]; }
-			if (uv_logged[1] > dw_uvmax[1]) { dw_uvmax[1] = uv_logged[1]; }
-		}
-		if (xyz[0] < dw_xmin) { dw_xmin = xyz[0]; }
-		if (xyz[0] > dw_xmax) { dw_xmax = xyz[0]; }
-		if (xyz[1] < dw_ymin) { dw_ymin = xyz[1]; }
-		if (xyz[1] > dw_ymax) { dw_ymax = xyz[1]; }
-		/* attr_position is already clip space (blit.vp: gl_Position =
-		   vec4(attr_position, 1.), no transform), so x is in -1..1, not
-		   pixels -- the old >440 test could never be true. The details box
-		   is the right half of the map-select screen (the map table is the
-		   left half), so x > 0.1 in NDC isolates the description words and
-		   excludes the centred menu and the left-hand list. */
-		if (g_descword_arm && index == run_end - 1 && texture_position != nullptr &&
-		    bound_textures[0] != 0 && dw_xmin > 0.0f) {
-			const auto it = textures.find(bound_textures[0]);
-			const int tw = it != textures.end() ? it->second.width : -1;
-			const int th = it != textures.end() ? it->second.height : -1;
-			if (tw > 0 && tw < 120 && th > 0 && th < 48) {
-				if (g_descword_count < 200) {
-					++g_descword_count;
-					/* Content status of the very texture this draw samples:
-					   -1 unknown, else (slot<<4)|res|written<<1|dead<<2. A word
-					   drawn from a slot with no content (written bit clear, or
-					   resource bit clear) is the blank one. */
-					const int content = virtioBackendTextureContent(bound_textures[0]);
-					log_progress("AMIGA DESCWORD: tex=%u %dx%d box %.3f,%.3f..%.3f,%.3f "
-					             "uv %.3f,%.3f..%.3f,%.3f verts=%d content=%d",
-					             bound_textures[0], tw, th, dw_xmin, dw_ymin, dw_xmax, dw_ymax,
-					             dw_uvmin[0], dw_uvmin[1], dw_uvmax[0], dw_uvmax[1],
-					             static_cast<int>(run_end - run_start), content);
-				}
-			}
-		}
-#endif
 		wlgl_glVertex3f(xyz[0], xyz[1], xyz[2]);
 	}
 	wlgl_glEnd();

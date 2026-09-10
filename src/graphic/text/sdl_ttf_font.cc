@@ -21,10 +21,6 @@
 #include <memory>
 
 #include "base/string.h"
-#ifdef __amigaos4__
-#include "base/log.h"
-#include "graphic/image.h"
-#endif
 #include "graphic/sdl_utils.h"
 #include "graphic/text/rt_errors.h"
 
@@ -64,50 +60,15 @@ void SdlTtfFont::dimensions(const std::string& txt, int style, uint16_t* gw, uin
 	*gh = h;
 }
 
-#ifdef __amigaos4__
-/* Defined in src/graphic/virtio/gl_frontend.cc. Armed here when the word
-   unique to the Crater map description is first rendered, so the DESCWORD
-   probe captures that screen's blits instead of the loading/menu words. */
-extern "C" {
-extern volatile int g_descword_arm;
-extern unsigned g_descword_count;
-}
-#endif
-
 std::shared_ptr<const Image> SdlTtfFont::render(const std::string& txt,
                                                 const RGBColor& clr,
                                                 int style,
                                                 TextureCache* texture_cache) {
-#ifdef __amigaos4__
-	if (txt == "meteor") {
-		g_descword_count = 0;
-		g_descword_arm = 1;
-	}
-#endif
-	std::string hash =
+	const std::string hash =
 	   format("ttf:%s:%i:%s:%02x%02x%02x:%i", font_name_, ptsize_, txt, static_cast<int>(clr.r),
 	          static_cast<int>(clr.g), static_cast<int>(clr.b), style);
-#ifdef __amigaos4__
-	/* EXPERIMENT: force the word 'the' to render fresh every time by making
-	   its cache key unique, so the description gets a brand-new high-id
-	   texture instead of the old cached id 1188 it reuses. If the fresh one
-	   shows while the cached one was blank, the fault is the re-appended old
-	   texture's resource, not the draw. Diagnostic only -- to be removed. */
-	/* Experiment temporarily disabled: keep 'the' on its cached id 1188 so the
-	   backend attachment probe can observe the blank slot. */
-	if (false && txt == "the") {
-		static unsigned the_fresh = 0;
-		hash += format(":amigafresh%u", ++the_fresh);
-	}
-#endif
 	std::shared_ptr<const Image> rv = texture_cache->get(hash);
 	if (rv != nullptr) {
-#ifdef __amigaos4__
-		if (g_descword_arm && g_descword_count < 200) {
-			log_progress("AMIGA WORDMAP: '%s' id=%u (cached)", txt.c_str(),
-			             rv->blit_data().texture_id);
-		}
-#endif
 		return rv;
 	}
 
@@ -183,15 +144,7 @@ std::shared_ptr<const Image> SdlTtfFont::render(const std::string& txt,
 		throw RenderError(format("Rendering '%s' gave the error: %s", txt, TTF_GetError()));
 	}
 
-	std::shared_ptr<const Image> made =
-	   texture_cache->insert(hash, std::make_shared<Texture>(text_surface));
-#ifdef __amigaos4__
-	if (g_descword_arm && g_descword_count < 200) {
-		log_progress("AMIGA WORDMAP: '%s' id=%u (fresh)", txt.c_str(),
-		             made->blit_data().texture_id);
-	}
-#endif
-	return made;
+	return texture_cache->insert(hash, std::make_shared<Texture>(text_surface));
 }
 
 uint16_t SdlTtfFont::ascent(int style) const {
