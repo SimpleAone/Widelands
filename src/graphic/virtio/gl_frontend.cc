@@ -724,8 +724,21 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 		wlgl_virtglSetFragmentProgram(fragment_program);
 
 	wlgl_glBegin(mode == GL_LINES ? GL_LINES : GL_TRIANGLES);
+#ifdef __amigaos4__
+	/* Per-run bounding box of screen position and UV, so DESCWORD can log one
+	   decisive line per word (index here is a global vertex index, never 0 for
+	   later runs -- the old index==0 test essentially never fired). */
+	float dw_uvmin[2] = {1e9f, 1e9f}, dw_uvmax[2] = {-1e9f, -1e9f};
+	float dw_xmin = 1e9f, dw_xmax = -1e9f, dw_ymin = 1e9f, dw_ymax = -1e9f;
+#endif
 	for (GLsizei index = run_start; index < run_end; ++index) {
 		const GLsizei vertex = first + index;
+#ifdef __amigaos4__
+		if (index == run_start) {
+			dw_uvmin[0] = dw_uvmin[1] = 1e9f; dw_uvmax[0] = dw_uvmax[1] = -1e9f;
+			dw_xmin = dw_ymin = 1e9f; dw_xmax = dw_ymax = -1e9f;
+		}
+#endif
 
 		/* What the fragment shader would have produced, expressed as the
 		   vertex colour a GL_MODULATE unit needs to produce the same thing. */
@@ -891,24 +904,39 @@ void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 #ifdef __amigaos4__
 		/* The Crater description sits in the box on the right (x > 440), and
 		   one word in it -- "the" -- is blank while every other word shows.
-		   Everything measurable about its draw looks correct, so the last
-		   unchecked thing is the texture coordinate: a valid, filled texture
-		   sampled with degenerate UVs draws blank and looks perfect from
-		   everywhere else. Log the first vertex of a small textured draw in
-		   that box, with the texture, its size, position and UV. log_progress
-		   so it survives the buffering; capped so it stays small. */
-		if (index == 0 && texture_position != nullptr && bound_textures[0] != 0 &&
-		    xyz[0] > 440.0f) {
+		   Accumulate this run's screen box and UV box; at the last vertex log
+		   one line per small textured word in that box. Two things are decisive:
+		   whether "the" is drawn at all (a gap in the sequence means layout
+		   dropped it), and, if drawn, whether its UV box is degenerate (a valid
+		   filled texture sampled with collapsed UVs draws blank and looks fine
+		   from everywhere else) or a normal sub-rect (then the texture content
+		   or our slot resolution is the fault, not the coordinates). The word's
+		   own width is the texture width (tw): "the" is ~18-24px. log_progress
+		   so it survives buffering; capped so it stays small. */
+		if (texture_position != nullptr) {
+			if (uv_logged[0] < dw_uvmin[0]) { dw_uvmin[0] = uv_logged[0]; }
+			if (uv_logged[1] < dw_uvmin[1]) { dw_uvmin[1] = uv_logged[1]; }
+			if (uv_logged[0] > dw_uvmax[0]) { dw_uvmax[0] = uv_logged[0]; }
+			if (uv_logged[1] > dw_uvmax[1]) { dw_uvmax[1] = uv_logged[1]; }
+		}
+		if (xyz[0] < dw_xmin) { dw_xmin = xyz[0]; }
+		if (xyz[0] > dw_xmax) { dw_xmax = xyz[0]; }
+		if (xyz[1] < dw_ymin) { dw_ymin = xyz[1]; }
+		if (xyz[1] > dw_ymax) { dw_ymax = xyz[1]; }
+		if (index == run_end - 1 && texture_position != nullptr &&
+		    bound_textures[0] != 0 && dw_xmin > 440.0f) {
 			const auto it = textures.find(bound_textures[0]);
 			const int tw = it != textures.end() ? it->second.width : -1;
 			const int th = it != textures.end() ? it->second.height : -1;
-			if (tw > 0 && tw < 80 && th > 0 && th < 48) {
+			if (tw > 0 && tw < 120 && th > 0 && th < 48) {
 				static unsigned descWords = 0;
-				if (descWords < 60) {
+				if (descWords < 80) {
 					++descWords;
-					log_progress("AMIGA DESCWORD: tex=%u %dx%d at %.0f,%.0f uv %.3f %.3f",
-					             bound_textures[0], tw, th, xyz[0], xyz[1],
-					             uv_logged[0], uv_logged[1]);
+					log_progress("AMIGA DESCWORD: tex=%u %dx%d box %.0f,%.0f..%.0f,%.0f "
+					             "uv %.3f,%.3f..%.3f,%.3f verts=%d",
+					             bound_textures[0], tw, th, dw_xmin, dw_ymin, dw_xmax, dw_ymax,
+					             dw_uvmin[0], dw_uvmin[1], dw_uvmax[0], dw_uvmax[1],
+					             static_cast<int>(run_end - run_start));
 				}
 			}
 		}
